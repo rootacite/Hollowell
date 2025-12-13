@@ -188,6 +188,8 @@ void iter_chunks(chunk_callback cb, void* data)
         .replace("#$PLACEHOLDER$#", &format!("{}", arg.len())),
     );
     c_code.push_str(&iter_fun);
+    
+    
 
     fs::write(&output_path, c_code.as_bytes())?;
 

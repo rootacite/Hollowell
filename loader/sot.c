@@ -53,6 +53,7 @@ void lst_ls_add(uint64_t value, const char *name) {
 
     lst->name = name;
     lst->value = value;
+    lst->next = NULL;
 
     struct LocalSymbolTable* end = lst_get_end();
     end->next = lst;

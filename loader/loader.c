@@ -11,7 +11,10 @@
 
 #define DT_GNU_HASH_RED 49
 
+#include <stdlib.h>
+
 #include "sot.h"
+#include "deobfuscate.h"
 
 const char* SUCC = "\x1b[32m[+]\x1b[0m";
 const char* FAIL = "\x1b[31m[-]\x1b[0m";
@@ -37,6 +40,7 @@ struct cb_io {
     char* name;
     uint64_t vdata;
     const unsigned char *addr;
+    uint64_t size;
 };
 // ............................................
 
@@ -78,7 +82,8 @@ static void do_rela_reloc(uint64_t base, Elf64_Rela *rela, size_t count, Elf64_S
     }
 }
 
-static void do_relr_reloc(uint64_t base, Elf64_Relr *relr, size_t count) {
+static void do_relr_reloc(uint64_t base, Elf64_Relr *relr, size_t count)
+{
     const size_t bits = (sizeof(Elf64_Relr) * 8) - 1; /* 63 on ILP64/typical x86_64 */
     uint64_t *where = NULL;
 
@@ -109,6 +114,7 @@ static int cb_find_vdata(ChunkInfo_t *ci, void *data) {
 
     if (ci->vdata == r->vdata) {
         r->addr = ci->data;
+        r->size = ci->size;
         return 0;
     }
 
@@ -120,6 +126,7 @@ static int cb_find_name(ChunkInfo_t *ci, void *data) {
 
     if (strcmp(ci->name, r->name) == 0) {
         r->addr = ci->data;
+        r->size = ci->size;
         return 0;
     }
 
@@ -133,16 +140,32 @@ static void do_parse_auxv(Elf64_auxv_t* auxv, Elf64_auxv_t* auxv_table[]) {
     }
 }
 
-static void do_load_segment(void* base, Elf64_Phdr* p) {
-    struct cb_io r = { .name = "ehdr", .addr = 0 };
+static int do_load_segment(void* base, Elf64_Phdr* p) {
+    struct cb_io r = { .name = "seed", .addr = 0 };
     if (p->p_type != PT_LOAD)
-        return;
+        return 0;
+
+    iter_chunks(cb_find_name, &r);
+    const uint8_t *p_seed = r.addr;
 
     uint64_t load_base = (uint64_t)base + p->p_vaddr;
     r.vdata = p->p_vaddr;
     iter_chunks(cb_find_vdata, &r);
 
-    memcpy((void*)load_base, r.addr, p->p_filesz);
+    // Deobfuscate
+    uint8_t *compressed_buffer = malloc(r.size);
+    deobfuscate_at(p_seed, r.addr, compressed_buffer, r.size);
+
+    uint8_t *buffer = NULL;
+    const size_t buffer_size = decompress_gzip(compressed_buffer, r.size, &buffer);
+
+    if (!buffer_size)
+        return 1;
+    free(compressed_buffer);
+
+    memcpy((void*)load_base, buffer, buffer_size);
+    free(buffer);
+
     printf("%s Segment(vaddr = %lx, memsz = %lx) loaded to %lx\n", SUCC, p->p_vaddr, p->p_memsz, load_base);
 
     uint64_t load_page = load_base & ~0xfffULL;
@@ -160,6 +183,8 @@ static void do_load_segment(void* base, Elf64_Phdr* p) {
 
     mprotect((void*)load_page, page_size, prot);
     printf("%s Protect of %lu page(s) at %lx adjusted to %d. \n", SUCC, page_size / 0x1000, load_page, prot);
+
+    return 0;
 }
 
 static void do_parse_dynamic(uint64_t base, Elf64_Dyn *dynamic, Elf64_Dyn *dynamic_table[]) {
@@ -242,13 +267,34 @@ JumpSlot loader(Elf64_auxv_t* auxv) {
     Elf64_auxv_t* auxv_table[100] = { NULL };
     do_parse_auxv(auxv, auxv_table);
 
-    struct cb_io r = { .name = "ehdr", .addr = 0 };
+    struct cb_io r = { .name = "seed", .addr = 0 };
     iter_chunks(cb_find_name, &r);
-    Elf64_Ehdr* ehdr = (Elf64_Ehdr*)r.addr;
+    uint8_t seed[32];
+    memcpy(seed, r.addr, 32);
 
+    // Origin Ehdr
+    r.name = "ehdr";
+    iter_chunks(cb_find_name, &r);
+    uint8_t *compressed_ehdr = malloc(r.size);
+    deobfuscate_at(seed, r.addr, compressed_ehdr, r.size);
+
+    Elf64_Ehdr* ehdr = NULL;
+    if (!decompress_gzip(compressed_ehdr, r.size, (uint8_t**)&ehdr))
+        return NULL;
+    free(compressed_ehdr);
+    // ...
+
+    // Origin Phdr
     r.name = "phdr";
     iter_chunks(cb_find_name, &r);
-    Elf64_Phdr* phdr = (Elf64_Phdr*)r.addr;
+    uint8_t *compressed_phdr = malloc(r.size);
+    deobfuscate_at(seed, r.addr, compressed_phdr, r.size);
+
+    Elf64_Phdr* phdr = NULL;
+    if (!decompress_gzip(compressed_phdr, r.size, (uint8_t**)&phdr))
+        return NULL;
+    free(compressed_phdr);
+    // ...
 
     uint64_t sz_embedded = 0;
     for (int i = 0; i < ehdr->e_phnum; i++) {
@@ -274,7 +320,8 @@ JumpSlot loader(Elf64_auxv_t* auxv) {
             *(uint64_t*)&dynamic += p->p_vaddr;
             printf("%s Dynamic address determined to %lx\n", INFO, (uint64_t)dynamic);
         }
-        do_load_segment(embedded_base, p);
+        if (do_load_segment(embedded_base, p))
+            return NULL;
     }
 
     do_parse_dynamic((uint64_t)embedded_base, dynamic, dynamic_table);
@@ -337,6 +384,8 @@ JumpSlot loader(Elf64_auxv_t* auxv) {
     {
         auxv_table[AT_ENTRY]->a_un.a_val = oep;
     }
+
+    free(ehdr);
 
     return (void*)oep;
 }

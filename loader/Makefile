@@ -4,18 +4,16 @@ CXX = clang++
 LD = clang
 
 TARGETS = loader
-OBJS = loader.o entry.o sot.o
+OBJS = loader.o entry.o sot.o deobfuscate.o
 
 CFLAGS = -fPIC -c -Og -g
-LDFLAGS = -pie -Wl,-e,_emain -Wl,--no-gc-sections
+LDFLAGS = -pie -Wl,-e,_emain -Wl,--no-gc-sections -lz
 ASFLAGS = -g -c
-
-T = ../bin/ssh
 
 all: $(TARGETS)
 
 inner:
-	../bin/divider $(T)
+	../bin/divider $(T) $(KEY)
 	sync
 	../bin/hexer $$(find . -type f -name "*.bin" -exec printf "%s " {} +)
 	rm -f *.bin
@@ -27,6 +25,9 @@ loader.o: loader.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 sot.o: sot.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+deobfuscate.o: deobfuscate.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 entry.o: entry.S

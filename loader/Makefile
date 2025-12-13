@@ -6,9 +6,9 @@ LD = clang
 TARGETS = loader
 OBJS = loader.o entry.o sot.o deobfuscate.o
 
-CFLAGS = -fPIC -c -Og -g
+CFLAGS = -fPIC -c -O0 -g
 LDFLAGS = -pie -Wl,-e,_emain -Wl,--no-gc-sections -lz
-ASFLAGS = -g -c
+ASFLAGS = -c -g
 
 all: $(TARGETS)
 
@@ -20,6 +20,8 @@ inner:
 
 loader: $(OBJS) inner
 	$(LD) $(LDFLAGS) -o loader $(wildcard *.o)
+	objcopy --strip-all loader ../bin/$$(basename $(T))
+	chmod u+x ../bin/$$(basename $(T))
 
 loader.o: loader.c
 	$(CC) $(CFLAGS) -o $@ $<

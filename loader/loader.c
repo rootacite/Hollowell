@@ -22,6 +22,7 @@ const char* ALER = "\x1b[31m[!]\x1b[0m";
 const char* INFO = "\x1b[34m[*]\x1b[0m";
 
 typedef void* JumpSlot;
+extern struct r_debug _r_debug;
 
 // ................Embedded..................
 struct ChunkInfo {
@@ -198,8 +199,6 @@ static void do_parse_dynamic(uint64_t base, Elf64_Dyn *dynamic, Elf64_Dyn *dynam
             case DT_RELA:
             case DT_RELR:
             case DT_REL:
-            case DT_INIT:
-            case DT_FINI:
             case DT_JMPREL:
             case DT_VERDEF:
             case DT_VERNEED:
@@ -263,6 +262,46 @@ static size_t gnu_hash_sym_count(const void *gnu_hash_base) {
     return (size_t)max_index + 1;
 }
 
+static void adjust_self_dynamic(Elf64_Phdr *p, size_t pnum, Elf64_Dyn *inner_dyntab[], uint64_t embd_addr) {
+    Elf64_Dyn *dynamic = NULL;
+    uint64_t base = 0;
+    for (int i = 0; i < pnum; i++) {
+        if (p[i].p_type == PT_DYNAMIC) {
+            *(uint64_t *) &dynamic += p[i].p_vaddr;
+        }
+
+        if (p[i].p_type == PT_PHDR) {
+            base = (uint64_t) p - p[i].p_vaddr;
+            *(uint64_t *) &dynamic += base;
+        }
+    }
+
+    uint64_t pv = (uint64_t)dynamic & ~0xfffULL;
+    mprotect((void*)pv, 0x1000, PROT_READ | PROT_WRITE);
+
+    for (int i = 0; dynamic[i].d_tag != DT_NULL; i++) {
+        switch (dynamic[i].d_tag) {
+            case DT_INIT_ARRAY:
+                printf("%s DT_INIT_ARRAY: %p [%lx] => [%lx], \n", INFO, &dynamic[i].d_un.d_ptr, dynamic[i].d_un.d_ptr,
+                       inner_dyntab[DT_INIT_ARRAY]->d_un.d_ptr);
+                dynamic[i].d_un.d_ptr = (embd_addr - base) + inner_dyntab[DT_INIT_ARRAY]->d_un.d_ptr;
+                break;
+            case DT_INIT_ARRAYSZ:
+                dynamic[i].d_un.d_val = inner_dyntab[DT_INIT_ARRAYSZ]->d_un.d_val;
+            case DT_FINI_ARRAY:
+                printf("%s DT_FINI_ARRAY: %p [%lx] => [%lx], \n", INFO, &dynamic[i].d_un.d_ptr, dynamic[i].d_un.d_ptr,
+                       inner_dyntab[DT_FINI_ARRAY]->d_un.d_ptr);
+                dynamic[i].d_un.d_ptr = (embd_addr - base) + inner_dyntab[DT_FINI_ARRAY]->d_un.d_ptr;
+                break;
+            case DT_FINI_ARRAYSZ:
+                dynamic[i].d_un.d_val = inner_dyntab[DT_FINI_ARRAYSZ]->d_un.d_val;
+                break;
+            default:
+                break;
+        }
+    }
+}
+
 JumpSlot loader(Elf64_auxv_t* auxv) {
     Elf64_auxv_t* auxv_table[100] = { NULL };
     do_parse_auxv(auxv, auxv_table);
@@ -308,7 +347,7 @@ JumpSlot loader(Elf64_auxv_t* auxv) {
     sz_embedded &= ~0xfffULL;
     printf("%s sz_embedded determined to %lx\n", INFO, sz_embedded);
 
-    void *embedded_base = mmap(NULL, sz_embedded, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    void *embedded_base = mmap((void*)0x600000000000, sz_embedded, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     printf("%s Embedded base address determined to %p\n", INFO, embedded_base);
 
     Elf64_Dyn *dynamic = embedded_base;
@@ -375,6 +414,15 @@ JumpSlot loader(Elf64_auxv_t* auxv) {
 
     if (auxv_table[AT_PHDR])
     {
+        // Modifying the loader's Dynamic Segment directly might not be a good idea ...
+
+        // adjust_self_dynamic(
+        //     (Elf64_Phdr*)auxv_table[AT_PHDR]->a_un.a_val,
+        //     auxv_table[AT_PHNUM]->a_un.a_val,
+        //     dynamic_table,
+        //     (uint64_t)embedded_base
+        //     );
+
         auxv_table[AT_PHDR]->a_un.a_val = (uint64_t)phdr;
         auxv_table[AT_PHENT]->a_un.a_val = ehdr->e_phentsize;
         auxv_table[AT_PHNUM]->a_un.a_val = ehdr->e_phnum;
@@ -383,6 +431,43 @@ JumpSlot loader(Elf64_auxv_t* auxv) {
     if (auxv_table[AT_ENTRY])
     {
         auxv_table[AT_ENTRY]->a_un.a_val = oep;
+    }
+
+    struct link_map *lm = _r_debug.r_map;
+
+    for (; lm != NULL; lm = lm->l_next) {
+        if (lm->l_name == NULL || lm->l_name[0] == '\0') {
+            lm->l_addr = (uint64_t)embedded_base;
+            lm->l_ld = dynamic;
+
+            // link_map + 0x40 is ElfW(Dyn) *l_info, but this is internal to the dynamic linker.
+            // Considering a cleaner approach.
+
+            // Pseudocode code of __libc_start_main:
+            // v12 = rtld_global;
+            // v13 = rtld_global[20];
+            // if ( v13 )
+            // {
+            //     v19 = environ;
+            //     ((void (__fastcall *)(_QWORD, char **, _QWORD, void (*)(void), void (*)(void)))(*rtld_global + *(_QWORD *)(v13 + 8)))(
+            //       (unsigned int)argc,
+            //       ubp_av,
+            //       environ,
+            //       init,
+            //       fini);
+            //     v11 = v19;
+            // }
+
+            // __libc_start_main uses _rtld_global_ptr to get the main module's link_map,
+            // then computes init functions from its data.
+            // We must adjust this struct's data
+
+            uint64_t* l_info = (uint64_t*)((uint8_t*)lm + 0x40);
+            for (int i = 0; i < 40; i++) { // Iter to 40 to avoid DT_GNU_HASH_RED
+                if (dynamic_table[i])
+                    l_info[i] = (uint64_t)dynamic_table[i];
+            }
+        }
     }
 
     free(ehdr);

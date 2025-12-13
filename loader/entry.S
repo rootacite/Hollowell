@@ -63,6 +63,7 @@ _emain:
 
     test    %rax, %rax
     je      .Lexit
+    int3
     jmp     *%rax
 
 .Lexit:

@@ -9,6 +9,8 @@
 #include <dlfcn.h>
 #include <link.h>
 
+#define DT_GNU_HASH_RED 49
+
 #include "sot.h"
 
 const char* SUCC = "\x1b[32m[+]\x1b[0m";
@@ -38,17 +40,66 @@ struct cb_io {
 };
 // ............................................
 
-static void do_rela_reloc(uint64_t base, Elf64_Rela *rela, size_t count)
+struct DtHashDummy {
+    uint32_t nbucket;
+    uint32_t nchain;
+};
+
+static void do_rela_reloc(uint64_t base, Elf64_Rela *rela, size_t count, Elf64_Sym *dynsym, uint64_t dynstr)
 {
     for (int i = 0; i < count ; i++)
     {
+        uint32_t sym_index = (rela[i].r_info >> 32) & 0xffffffff;
+        const char* sym_name = (const char *)(dynstr + dynsym[sym_index].st_name);
+        uint64_t sym_value = 0;
+        uint64_t sym_sz = dynsym[sym_index].st_size;
+
         switch (rela[i].r_info & 0xffffffff)
         {
+            case R_X86_64_64:
+                sym_value = sot_symbol_lookup(sym_name);
+                *(uint64_t*)(rela[i].r_offset + base) = sym_value + rela[i].r_addend;
+                break;
+            case R_X86_64_GLOB_DAT:
+            case R_X86_64_JUMP_SLOT:
+                sym_value = sot_symbol_lookup(sym_name);
+                *(uint64_t*)(rela[i].r_offset + base) = sym_value;
+                break;
+            case R_X86_64_COPY:
+                sym_value = sot_symbol_lookup(sym_name);
+                memcpy((void*)(rela[i].r_offset + base), (void*)sym_value, sym_sz);
+                break;
             case R_X86_64_RELATIVE:
                 *(uint64_t*)(rela[i].r_offset + base) = base + rela[i].r_addend;
                 break;
             default:
                 break;
+        }
+    }
+}
+
+static void do_relr_reloc(uint64_t base, Elf64_Relr *relr, size_t count) {
+    const size_t bits = (sizeof(Elf64_Relr) * 8) - 1; /* 63 on ILP64/typical x86_64 */
+    uint64_t *where = NULL;
+
+    for (size_t i = 0; i < count; ++i) {
+        Elf64_Relr entry = relr[i];
+
+        if ((entry & 1u) == 0) {
+            uintptr_t addr = (uintptr_t)base + (uintptr_t)entry;
+            where = (uint64_t *)addr;
+            *where = *where + base;
+            ++where;
+        } else {
+            uint64_t bitmap = (uint64_t)(entry >> 1);
+            for (size_t b = 0; b < bits; ++b) {
+                if (where && (bitmap & 1u)) {
+                    where[b] = where[b] + base;
+                }
+                bitmap >>= 1;
+            }
+
+            where += bits;
         }
     }
 }
@@ -113,11 +164,6 @@ static void do_load_segment(void* base, Elf64_Phdr* p) {
 
 static void do_parse_dynamic(uint64_t base, Elf64_Dyn *dynamic, Elf64_Dyn *dynamic_table[]) {
     for (int i = 0; dynamic[i].d_tag != DT_NULL; i++) {
-        if (dynamic[i].d_tag >= 50)
-            continue;
-
-        dynamic_table[dynamic[i].d_tag] = &dynamic[i];
-
         switch (dynamic[i].d_tag) {
             case DT_PLTGOT:
             case DT_HASH:
@@ -125,9 +171,10 @@ static void do_parse_dynamic(uint64_t base, Elf64_Dyn *dynamic, Elf64_Dyn *dynam
             case DT_STRTAB:
             case DT_SYMTAB:
             case DT_RELA:
+            case DT_RELR:
+            case DT_REL:
             case DT_INIT:
             case DT_FINI:
-            case DT_REL:
             case DT_JMPREL:
             case DT_VERDEF:
             case DT_VERNEED:
@@ -137,11 +184,62 @@ static void do_parse_dynamic(uint64_t base, Elf64_Dyn *dynamic, Elf64_Dyn *dynam
             default:
                 break;
         }
+
+        if (dynamic[i].d_tag >= 50) {
+            if (dynamic[i].d_tag == DT_GNU_HASH) {
+                dynamic_table[DT_GNU_HASH_RED] = &dynamic[i];
+            }
+            continue;
+        }
+
+        dynamic_table[dynamic[i].d_tag] = &dynamic[i];
     }
 }
 
+static size_t gnu_hash_sym_count(const void *gnu_hash_base) {
+    if (!gnu_hash_base) return 0;
+
+    const unsigned char *p = gnu_hash_base;
+    const uint32_t *u32 = (const uint32_t *)p;
+
+    uint32_t nbucket    = u32[0];
+    uint32_t symoffset  = u32[1];
+    uint32_t bloom_size = u32[2];
+
+    const unsigned char *after_header = p + 4 * 4 + (size_t)bloom_size * 8;
+    const uint32_t *buckets = (const uint32_t *)after_header;
+    const uint32_t *chain = buckets + nbucket;
+
+    uint32_t max_index = 0;
+    int found_any = 0;
+
+    for (uint32_t i = 0; i < nbucket; ++i) {
+        uint32_t idx = buckets[i];
+        if (idx == 0) continue;
+
+        uint32_t cur = idx;
+        while (1) {
+            if (cur < symoffset) {
+                break;
+            }
+            size_t chain_idx = (size_t)(cur - symoffset);
+            uint32_t h = chain[chain_idx];
+            if (cur > max_index) max_index = cur;
+            found_any = 1;
+            if (h & 1U) break; /* end of this bucket's chain */
+            ++cur;
+        }
+    }
+
+    if (!found_any) {
+        return 0;
+    }
+
+    return (size_t)max_index + 1;
+}
+
 JumpSlot loader(Elf64_auxv_t* auxv) {
-    Elf64_auxv_t* auxv_table[100];
+    Elf64_auxv_t* auxv_table[100] = { NULL };
     do_parse_auxv(auxv, auxv_table);
 
     struct cb_io r = { .name = "ehdr", .addr = 0 };
@@ -168,7 +266,7 @@ JumpSlot loader(Elf64_auxv_t* auxv) {
     printf("%s Embedded base address determined to %p\n", INFO, embedded_base);
 
     Elf64_Dyn *dynamic = embedded_base;
-    Elf64_Dyn *dynamic_table[50];
+    Elf64_Dyn *dynamic_table[50] = { NULL };
 
     for (int i = 0; i < ehdr->e_phnum; i++) {
         Elf64_Phdr* p = &phdr[i];
@@ -185,7 +283,7 @@ JumpSlot loader(Elf64_auxv_t* auxv) {
             uint64_t p_str = dynamic[i].d_un.d_ptr + dynamic_table[DT_STRTAB]->d_un.d_ptr;
             printf("%s Found DT_NEEDED %s\n", INFO, (char*)p_str);
 
-            void *dh = dlopen("libgssapi_krb5.so.2", RTLD_NOW | RTLD_GLOBAL);
+            void *dh = dlopen((char*)p_str, RTLD_NOW | RTLD_GLOBAL);
             if (dh == NULL) {
                 __asm("int3");
                 continue;
@@ -193,10 +291,52 @@ JumpSlot loader(Elf64_auxv_t* auxv) {
             struct link_map* map;
             if (dlinfo(dh, RTLD_DI_LINKMAP, &map) == 0) {
                 printf("%s Shared object \"%s\" loaded to %p \n", SUCC, (char*)p_str, (void*)map->l_addr);
+                sot_so_add(dh);
             }
         }
     }
 
-    getchar();
-    return NULL;
+    uint32_t n_sym = 0;
+    if (dynamic_table[DT_HASH]) {
+        n_sym = ((struct DtHashDummy*)dynamic_table[DT_HASH]->d_un.d_ptr)->nchain;
+    } else if (dynamic_table[DT_GNU_HASH_RED]) {
+        n_sym = gnu_hash_sym_count((void*)dynamic_table[DT_GNU_HASH_RED]->d_un.d_ptr);
+    }
+
+    Elf64_Sym *dynsym = (Elf64_Sym*)dynamic_table[DT_SYMTAB]->d_un.d_ptr;
+    for (int i = 0; i < n_sym; i++) {
+        if (dynsym[i].st_shndx != SHN_UNDEF) {
+            lst_ls_add(dynsym[i].st_value + (uint64_t)embedded_base, (const char *)(dynamic_table[DT_STRTAB]->d_un.d_ptr + dynsym[i].st_name));
+        }
+    }
+
+    if (dynamic_table[DT_RELA])
+        do_rela_reloc(
+            (uint64_t)embedded_base,
+            (Elf64_Rela*)dynamic_table[DT_RELA]->d_un.d_ptr,
+            dynamic_table[DT_RELASZ]->d_un.d_val / dynamic_table[DT_RELAENT]->d_un.d_val,
+            (Elf64_Sym*)dynamic_table[DT_SYMTAB]->d_un.d_ptr,
+            dynamic_table[DT_STRTAB]->d_un.d_ptr);
+
+    if (dynamic_table[DT_RELR])
+        do_relr_reloc(
+            (uint64_t)embedded_base,
+            (Elf64_Relr*)dynamic_table[DT_RELR]->d_un.d_ptr,
+            dynamic_table[DT_RELRSZ]->d_un.d_val / dynamic_table[DT_RELRENT]->d_un.d_val);
+    
+    uint64_t oep = ehdr->e_entry + (uint64_t)embedded_base;
+
+    if (auxv_table[AT_PHDR])
+    {
+        auxv_table[AT_PHDR]->a_un.a_val = (uint64_t)phdr;
+        auxv_table[AT_PHENT]->a_un.a_val = ehdr->e_phentsize;
+        auxv_table[AT_PHNUM]->a_un.a_val = ehdr->e_phnum;
+    }
+
+    if (auxv_table[AT_ENTRY])
+    {
+        auxv_table[AT_ENTRY]->a_un.a_val = oep;
+    }
+
+    return (void*)oep;
 }

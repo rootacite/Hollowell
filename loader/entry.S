@@ -16,6 +16,13 @@ _pargc:
 .text
 
 _emain:
+    pushq   %rdi
+    pushq   %rsi
+    pushq   %rcx
+    pushq   %rdx
+
+    addq    $32, %rsp
+
     movq    %rsp, _pargc(%rip)
     movq    %rsp, %rdi
     movq    (%rdi), %rdi
@@ -26,6 +33,7 @@ _emain:
     addq    %rdi, %rsi
     movq    %rsi, _envp(%rip)
 
+    subq    $32, %rsp
 .Lauxv_loop:
     movq    (%rsi), %rdi
     test    %rdi, %rdi
@@ -39,14 +47,19 @@ _emain:
 
     pushq   %rbp
     movq    %rsp, %rbp
-    pushq   %rdx
 
+    sub     $16, %rsp
+    andq    $0xfffffffffffffff0, %rsp
     movq    _auxv(%rip), %rdi
     call    loader
 
-    popq   %rdx
     movq    %rbp, %rsp
     popq    %rbp
+
+    popq    %rdx
+    popq    %rcx
+    popq    %rsi
+    popq    %rdi
 
     test    %rax, %rax
     je      .Lexit

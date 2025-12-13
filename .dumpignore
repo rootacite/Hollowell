@@ -2,3 +2,4 @@ Cargo.lock
 divider/elf.rs
 .vscode
 .cargo
+LICENSE

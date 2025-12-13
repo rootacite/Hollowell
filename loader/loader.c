@@ -347,7 +347,7 @@ JumpSlot loader(Elf64_auxv_t* auxv) {
     sz_embedded &= ~0xfffULL;
     printf("%s sz_embedded determined to %lx\n", INFO, sz_embedded);
 
-    void *embedded_base = mmap((void*)0x600000000000, sz_embedded, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    void *embedded_base = mmap(NULL, sz_embedded, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     printf("%s Embedded base address determined to %p\n", INFO, embedded_base);
 
     Elf64_Dyn *dynamic = embedded_base;
@@ -471,6 +471,5 @@ JumpSlot loader(Elf64_auxv_t* auxv) {
     }
 
     free(ehdr);
-
     return (void*)oep;
 }

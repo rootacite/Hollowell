@@ -6,7 +6,7 @@ LD = clang
 TARGETS = loader
 OBJS = loader.o entry.o sot.o deobfuscate.o
 
-CFLAGS = -fPIC -c -O0 -g
+CFLAGS = -fPIC -c -O3 -g
 LDFLAGS = -pie -Wl,-e,_emain -Wl,--no-gc-sections -lz
 ASFLAGS = -c -g
 

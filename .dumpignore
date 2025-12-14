@@ -3,3 +3,4 @@ divider/elf.rs
 .vscode
 .cargo
 LICENSE
+README.md

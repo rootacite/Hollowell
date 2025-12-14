@@ -35,15 +35,18 @@ static void do_rela_reloc(
         {
             case R_X86_64_64:
                 sym_value = sot_symbol_lookup(sym_name);
+                printf("%s Parsed symbol \"%s\". \n", INFO, sym_name);
                 *(uint64_t*)(rela[i].r_offset + base) = sym_value + rela[i].r_addend;
                 break;
             case R_X86_64_GLOB_DAT:
             case R_X86_64_JUMP_SLOT:
                 sym_value = sot_symbol_lookup(sym_name);
+                printf("%s Parsed symbol \"%s\". \n", INFO, sym_name);
                 *(uint64_t*)(rela[i].r_offset + base) = sym_value;
                 break;
             case R_X86_64_COPY:
                 sym_value = sot_symbol_lookup(sym_name);
+                printf("%s Parsed symbol \"%s\". \n", INFO, sym_name);
                 memcpy((void*)(rela[i].r_offset + base), (void*)sym_value, sym_sz);
                 break;
             case R_X86_64_RELATIVE:
@@ -228,6 +231,14 @@ int do_relocate(
             dynamic_table[DT_RELASZ]->d_un.d_val / dynamic_table[DT_RELAENT]->d_un.d_val,
             (const Elf64_Sym*)dynamic_table[DT_SYMTAB]->d_un.d_ptr,
             dynamic_table[DT_STRTAB]->d_un.d_ptr);
+
+    if (dynamic_table[DT_JMPREL])
+        do_rela_reloc(
+        image_base,
+        (const Elf64_Rela*)dynamic_table[DT_JMPREL]->d_un.d_ptr,
+        dynamic_table[DT_PLTRELSZ]->d_un.d_val / dynamic_table[DT_RELAENT]->d_un.d_val,
+        (const Elf64_Sym*)dynamic_table[DT_SYMTAB]->d_un.d_ptr,
+        dynamic_table[DT_STRTAB]->d_un.d_ptr);
 
     if (dynamic_table[DT_RELR])
         do_relr_reloc(

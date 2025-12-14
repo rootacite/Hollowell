@@ -1,0 +1,20 @@
+
+[package]
+name = "Hollowchain"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "chain"
+path = "chain.rs"
+
+[dependencies]
+
+
+[build-dependencies]
+cc = "1.2.49"
+
+[workspace]
+members = [
+    "."
+]

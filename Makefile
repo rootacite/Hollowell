@@ -15,6 +15,7 @@ framework: bin
 
 dirs:
 	mkdir -p bin
+	mkdir -p obj
 
 bin: dirs
 	$(CARGO) build -j 28

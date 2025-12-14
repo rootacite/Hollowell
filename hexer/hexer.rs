@@ -126,9 +126,9 @@ struct ChunkInfo {
 
     let mut iter_fun = r#"
 typedef struct ChunkInfo ChunkInfo_t;
-typedef int(*chunk_callback)(ChunkInfo_t*, void*);
+typedef int(*chunk_callback)(const ChunkInfo_t*, void*);
 
-void iter_chunks(chunk_callback cb, void* data)
+int iter_chunks(chunk_callback cb, void* data)
 {
     ChunkInfo_t chunks[] = {
 "#
@@ -181,8 +181,10 @@ void iter_chunks(chunk_callback cb, void* data)
 
     for (int i = 0; i < chunks_count; i += 1) {
         int r = cb(&chunks[i], data);
-        if (r == 0) break;
+        if (r == 0) return 1;
     }
+
+    return 0;
 }
     "#
         .replace("#$PLACEHOLDER$#", &format!("{}", arg.len())),

@@ -4,7 +4,7 @@ CXX = clang++
 LD = clang
 
 TARGETS = loader
-OBJS = loader.o entry.o sot.o deobfuscate.o
+OBJS = loader.o entry.o sot.o deobfuscate.o relocation.o
 
 CFLAGS = -fPIC -c -O3 -g
 LDFLAGS = -pie -Wl,-e,_emain -Wl,--no-gc-sections -lz
@@ -30,6 +30,9 @@ sot.o: sot.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 deobfuscate.o: deobfuscate.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+relocation.o: relocation.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 entry.o: entry.S

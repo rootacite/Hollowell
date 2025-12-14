@@ -2,7 +2,6 @@
 #define _GNU_SOURCE
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <elf.h>
 #include <string.h>
 #include <unistd.h>
@@ -59,6 +58,7 @@ void lst_ls_add(uint64_t value, const char *name) {
     end->next = lst;
 }
 
+// ReSharper disable once CppDeclaratorNeverUsed
 static uint64_t lst_symbol_lookup(const char *name) {
     struct LocalSymbolTable* lst = lst_head.next;
 
@@ -74,10 +74,13 @@ static uint64_t lst_symbol_lookup(const char *name) {
 }
 
 uint64_t sot_symbol_lookup(const char *name) {
-    uint64_t sym = lst_symbol_lookup(name);
+    // uint64_t sym = lst_symbol_lookup(name);
+    // FIXME: If symbol versions are not considered,
+    // FIXME: prioritize searching for potentially incorrect symbols in the local symbol table
     // if (sym)
     //     return sym;
 
+    uint64_t sym = 0;
     struct SharedObjectTable* sot = sot_head.next;
     while (sot != NULL) {
         void *ds = dlsym(sot->hDl, name);

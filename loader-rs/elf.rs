@@ -1,12 +1,16 @@
 
 // elf.rs
 
+use std::collections::HashMap;
 use anyhow::{Context, Result};
-use goblin::elf::{Elf, ProgramHeader, Sym, program_header::PT_DYNAMIC, program_header::PT_LOAD, reloc::R_X86_64_JUMP_SLOT, Reloc};
+use goblin::elf::{Elf, ProgramHeader, Sym, program_header::PT_LOAD, reloc::R_X86_64_JUMP_SLOT, Reloc};
 use memmap2::Mmap;
 use std::fs::File;
 use std::ops::Deref;
+use goblin::elf::dynamic::DT_NEEDED;
 use ouroboros::self_referencing;
+use crate::elfdef;
+use crate::elfdef::{get_shared_object_path, HashConverter, SymbolTableEntry};
 
 fn open_mem_map(path: &str) -> Result<Mmap> {
     let file = File::open(path)?;
@@ -19,12 +23,12 @@ pub struct ExecuteLinkFile {
 
     #[borrows(data)]
     #[covariant]
-    pub elf: Elf<'this>
+    elf: Elf<'this>
 }
 
 impl ExecuteLinkFile {
-    #[allow(unused)]
-    pub fn prase(path: &str) -> Result<Self> {
+    pub fn prase(path: &str) -> Result<Self>
+    {
         let data = open_mem_map(path)?.deref().to_owned();
         let s = ExecuteLinkFileTryBuilder {
             data,
@@ -36,8 +40,8 @@ impl ExecuteLinkFile {
         Ok(s)
     }
 
-    #[allow(unused)]
-    pub fn get_loads(&self) -> Result<Vec<ProgramHeader>> {
+    pub fn get_loads(&self) -> Result<Vec<ProgramHeader>>
+    {
         let loads = self.borrow_elf()
             .program_headers
             .iter()
@@ -50,19 +54,41 @@ impl ExecuteLinkFile {
         Ok(loads)
     }
 
-    #[allow(unused)]
-    pub fn get_dynamic(&self) -> Result<ProgramHeader> {
-        let dynamic = self.borrow_elf()
-            .program_headers
-            .iter()
-            .find(|ph| ph.p_type == PT_DYNAMIC)
-            .context("No PT_DYNAMIC segment found")?;
+    pub fn get_dependencies(&self) -> Result<Vec<String>>
+    {
+        let mut r = Vec::<String>::new();
 
-        Ok(dynamic.clone())
+        if let Some(dynamic) = &self.borrow_elf().dynamic
+        {
+            for needed in dynamic.dyns.iter().filter(|x| x.d_tag == DT_NEEDED) {
+                r.push(self.get_dyn_str(needed.d_val as usize)?);
+            }
+        }
+
+        Ok(r)
+    }
+
+    pub fn get_dependencies_recursively(path: &str, set: &mut Vec<String>) -> Result<()>
+    {
+        if !set.contains(&path.to_string())
+        {
+            set.push(path.to_owned());
+        } else {
+            return Ok(());
+        }
+
+        let e = Self::prase(path)?;
+        for dep in e.get_dependencies()?
+        {
+            Self::get_dependencies_recursively(&get_shared_object_path(&dep).context("failed to resolve.")?, set)?;
+        }
+
+        Ok(())
     }
 
     #[allow(unused)]
-    pub fn get_rela_sym(&self, name: &str) -> Result<Reloc> {
+    pub fn get_rela_sym(&self, name: &str) -> Result<Reloc>
+    {
         let rela_plt = self.borrow_elf().pltrelocs.iter();
 
         let sym = rela_plt
@@ -89,7 +115,28 @@ impl ExecuteLinkFile {
         Ok(first.clone())
     }
 
-    pub fn get_dyn_sym(&self, location: usize) -> Result<Sym> {
+    pub fn get_dynsym_table(&self) -> Result<HashMap<String, SymbolTableEntry>>
+    {
+        let dynstr = &self.borrow_elf().dynstrtab;
+
+        let syms = self.borrow_elf().dynsyms.iter().map(|x| {
+            elfdef::Sym {
+                st_name: x.st_name as u32,
+                st_info: x.st_info,
+                st_other: x.st_other,
+                st_shndx: x.st_shndx as u16,
+                st_value: x.st_value,
+                st_size: x.st_size,
+            }
+        }).map(|x| {
+            x.as_entry_gtab(dynstr)
+        }).collect::<Vec<SymbolTableEntry>>().as_hash_table();
+
+        Ok(syms)
+    }
+
+    pub fn get_dyn_sym(&self, location: usize) -> Result<Sym>
+    {
         let dyn_sym = self.borrow_elf()
             .dynsyms
             .get(location)
@@ -99,7 +146,8 @@ impl ExecuteLinkFile {
     }
 
     #[allow(unused)]
-    pub fn prase_dyn_sym(&self, name: &str) -> Result<Sym> {
+    pub fn prase_dyn_sym(&self, name: &str) -> Result<Sym>
+    {
         let dyn_sym = self.borrow_elf()
             .dynsyms.iter()
             .find(|sym| self.get_dyn_str(sym.st_name).ok().as_deref() == Some(name))
@@ -108,7 +156,8 @@ impl ExecuteLinkFile {
         Ok(dyn_sym.clone())
     }
 
-    pub fn get_dyn_str(&self, location: usize) -> Result<String> {
+    pub fn get_dyn_str(&self, location: usize) -> Result<String>
+    {
         let str = self.borrow_elf()
             .dynstrtab
             .get_at(location)
@@ -122,37 +171,4 @@ impl ExecuteLinkFile {
     {
         self.borrow_elf().header.e_type
     }
-    
-    pub fn get_sec_table(&self) -> Result<Vec<SectionHeader>>
-    {
-        let r = self.borrow_elf().section_headers.iter().
-            map(|x| SectionHeader {
-                sh_name: self.borrow_elf().shdr_strtab.get_at(x.sh_name).unwrap_or("").to_string(),
-                sh_type: x.sh_type,
-                sh_flags: x.sh_flags,
-                sh_addr: x.sh_addr,
-                sh_offset: x.sh_offset,
-                sh_size: x.sh_size,
-                sh_link: x.sh_link,
-                sh_info: x.sh_info,
-                sh_addralign: x.sh_addralign,
-                sh_entsize: x.sh_entsize,
-            })
-            .collect::<Vec<SectionHeader>>();
-
-        Ok(r)
-    }
-}
-
-pub struct SectionHeader {
-    pub sh_name: String,
-    pub sh_type: u32,
-    pub sh_flags: u64,
-    pub sh_addr: u64,
-    pub sh_offset: u64,
-    pub sh_size: u64,
-    pub sh_link: u32,
-    pub sh_info: u32,
-    pub sh_addralign: u64,
-    pub sh_entsize: u64,
 }

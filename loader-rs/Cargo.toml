@@ -9,10 +9,21 @@ name = "chain"
 path = "chain.rs"
 
 [dependencies]
-
+anyhow = "1.0.100"
+flate2 = "1.1.5"
+goblin = "0.10.4"
+memmap2 = "0.9.9"
+ouroboros = "0.18.5"
+plain = "0.2.3"
+sha2 = "0.10.9"
+once_cell = "1.21.3"
+nix = { version = "0.30.1", features = ["fs", "process", "ptrace", "uio"] }
+iced-x86 = { version = "1.21.0", features = ["code_asm"] }
+console = "0.16.2"
 
 [build-dependencies]
 cc = "1.2.49"
+walkdir = "2.5.0"
 
 [workspace]
 members = [

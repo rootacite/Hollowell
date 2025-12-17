@@ -109,9 +109,7 @@ fn main() -> Result<()> {
 
     arg.remove(0);
 
-    let first_input = &arg[0];
-    let name = get_filename_without_extension(first_input)?;
-    let output_path = format!("{}/{}.c", get_filepath(first_input)?, name);
+    let output_path = "hexer.c";
     let mut c_code: String = "".to_string();
 
     c_code.push_str(
@@ -160,7 +158,7 @@ int iter_chunks(chunk_callback cb, void* data)
         c_code.push_str(&format!(
             "static const unsigned long _{}_vdata = {:#0x}; \n",
             symbol_name,
-            parse_hex_to_u64(&symbol_name).unwrap_or_else(|_| 0)
+            parse_hex_to_u64(&symbol_name).unwrap_or_else(|_| u64::MAX)
         ));
 
         iter_fun.push_str(&format!(
@@ -169,7 +167,7 @@ int iter_chunks(chunk_callback cb, void* data)
             symbol_name,
             bin_data.len(),
             symbol_name,
-            parse_hex_to_u64(&symbol_name).unwrap_or_else(|_| 0),
+            parse_hex_to_u64(&symbol_name).unwrap_or_else(|_| u64::MAX),
             "}, \n"
         ));
     }
@@ -195,7 +193,7 @@ int iter_chunks(chunk_callback cb, void* data)
 
     fs::write(&output_path, c_code.as_bytes())?;
 
-    compile_target(&name)?;
+    compile_target("hexer")?;
     fs::remove_file(&output_path)?;
 
     Ok(())

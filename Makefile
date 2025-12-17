@@ -1,5 +1,5 @@
 
-MODULES = loader
+MODULES = obj loader-rs
 
 CC = clang
 CXX = clang++
@@ -23,9 +23,11 @@ bin: dirs
 	cp /tmp/rust-target-hwel/x86_64-unknown-linux-gnu/debug/divider ./bin/
 
 loader: bin
-	$(MAKE) -C loader all
+	$(MAKE) -C obj all
+	$(MAKE) -C loader-rs all
 
 clean:
+	$(CARGO) clean
 	@echo "--- Cleaning submodules ---"; for dir in $(MODULES); do $(MAKE) -C $$dir clean; done
 	rm -f bin/*
 

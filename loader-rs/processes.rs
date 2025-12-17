@@ -32,46 +32,6 @@ const INFO: &str = "\x1b[34m[*]\x1b[0m";
 
 type Bytes = Vec<u8>;
 
-#[allow(unused)]
-fn list_processes() -> Result<HashMap<String, i32>, std::io::Error> {
-    let mut processes = HashMap::<String, i32>::new();
-
-    let entries = fs::read_dir("/proc")?;
-    let dirs = entries
-        .filter_map(|e| {
-            let e = e.ok()?;
-            let path = e.path();
-            if path.is_dir() {
-                return path.file_name()?.to_str().map(|s| s.to_string());
-            }
-            None::<String>
-        })
-        .collect::<Vec<String>>();
-
-    for dir in dirs {
-        let Ok(pid) = dir.parse::<i32>() else {
-            continue;
-        };
-        let pid_path = format!("/proc/{}/exe", dir);
-        let Ok(name_path) = fs::read_link(&pid_path) else {
-            continue;
-        };
-        let name_path = name_path.to_string_lossy().to_string();
-
-        if let Some(name) = name_path.split("/").last() {
-            processes.insert(name.to_string(), pid);
-        }
-    }
-
-    Ok(processes)
-}
-
-#[allow(unused)]
-pub fn get_pid_by_name(name: &str) -> Result<i32, std::io::Error> {
-    let ps = list_processes()?;
-    Ok(ps[name])
-}
-
 pub struct Process {
     pid: Pid,
     #[allow(unused)]
@@ -81,84 +41,6 @@ pub struct Process {
 }
 
 impl Process {
-    #[allow(unused)]
-    fn write_unaligned_head(pid: Pid, addr: usize, data: &[u8], word_size: usize) -> Result<usize> {
-        let head_offset = addr % word_size;
-        let aligned_addr = addr - head_offset;
-        let orig_word = ptrace::read(pid, aligned_addr as *mut libc::c_void)?;
-        let mut bytes = orig_word.to_ne_bytes();
-
-        let copy_len = usize::min(word_size - head_offset, data.len());
-        bytes[head_offset..head_offset + copy_len].copy_from_slice(&data[..copy_len]);
-        let new_word = libc::c_long::from_le_bytes(bytes);
-
-        ptrace::write(pid, aligned_addr as *mut libc::c_void, new_word)?;
-        Ok(copy_len)
-    }
-
-    #[allow(unused)]
-    fn write_full_word(pid: Pid, addr: usize, data: &[u8]) -> Result<usize> {
-        let mut arr = [0u8; size_of::<libc::c_long>()];
-        arr.copy_from_slice(data);
-        let val = libc::c_long::from_le_bytes(arr);
-        ptrace::write(pid, addr as *mut libc::c_void, val)?;
-        Ok(size_of::<libc::c_long>())
-    }
-
-    #[allow(unused)]
-    fn write_unaligned_tail(
-        pid: Pid,
-        addr: usize,
-        data: &[u8],
-        _word_size: usize,
-    ) -> Result<usize> {
-        let orig_word = ptrace::read(pid, addr as *mut libc::c_void)?;
-        let mut bytes = orig_word.to_ne_bytes();
-        bytes[..data.len()].copy_from_slice(data);
-        let new_word = libc::c_long::from_le_bytes(bytes);
-
-        ptrace::write(pid, addr as *mut libc::c_void, new_word)?;
-        Ok(data.len())
-    }
-
-    #[allow(unused)]
-    pub fn write_memory_ptrace(&self, start_addr: usize, data: &[u8]) -> Result<usize> {
-        println!(
-            "{INFO} Try to write {} bytes from {:#0x}",
-            data.len(),
-            start_addr
-        );
-        let word_size = size_of::<libc::c_long>();
-        if word_size == 0 {
-            bail!("invalid word size");
-        }
-
-        let mut addr = start_addr;
-        let mut remaining = data;
-        let mut written = 0usize;
-
-        if addr % word_size != 0 && !remaining.is_empty() {
-            let n = Self::write_unaligned_head(self.pid, addr, remaining, word_size)?;
-            addr += n;
-            remaining = &remaining[n..];
-            written += n;
-        }
-
-        while remaining.len() >= word_size {
-            let n = Self::write_full_word(self.pid, addr, &remaining[..word_size])?;
-            addr += n;
-            remaining = &remaining[n..];
-            written += n;
-        }
-
-        if !remaining.is_empty() {
-            let n = Self::write_unaligned_tail(self.pid, addr, remaining, word_size)?;
-            written += n;
-        }
-
-        Ok(written)
-    }
-
     pub fn new(pid: Pid) -> Result<Self> {
         let maps = fs::read_to_string(format!("/proc/{}/maps", pid))?;
         let map = MemoryMap::new(
@@ -353,19 +235,8 @@ impl Process {
         let buffer = self.read_memory_vm(regs.rip as usize, payload.len() + 1)?;
         let instruction = [&payload as &[u8], &[0xccu8]].concat();
 
-        self.write_memory_ptrace(regs.rip as usize, &instruction)?;
+        self.write_memory_vm(regs.rip as usize, &instruction)?;
         println!("{SUCC} write instructions to {:#016x}", regs.rip);
-
-        // self.disassemble(regs.rip, instruction.len() as u64, |s, inst| {
-        //     for i in inst.iter() {
-        //         println!(
-        //             "{INFO} {}",
-        //             i.fmt_line_default().ok().context("Failed to parse line")?
-        //         );
-        //     }
-        //
-        //     Ok(())
-        // })?;
 
         // Continue target
         ptrace::cont(self.pid, None)?;
@@ -377,7 +248,7 @@ impl Process {
 
         post_proc(&r);
 
-        self.write_memory_ptrace(regs.rip as usize, &buffer)?;
+        self.write_memory_vm(regs.rip as usize, &buffer)?;
         ptrace::setregs(self.pid, regs)?;
         Ok(r)
     }

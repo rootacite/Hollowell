@@ -31,7 +31,7 @@ use crate::processes::Process;
 use crate::parser::get_ehdr;
 
 use console::{Term, Key};
-use crate::stagger::SymbolResolvable;
+use nix::sys::signal::Signal::SIGWINCH;
 
 #[allow(unused)]
 const SUCC: &str = "\x1b[32m[+]\x1b[0m";
@@ -121,9 +121,29 @@ fn main() -> Result<()> {
     proc.do_rela_reloc(base as usize, &hollow.rela, &hollow.deps, &hollow.syms)?;
     proc.do_relr_reloc(base as usize, &hollow.relr)?;
 
-    let r_debug = hollow.deps.resolve_symbol(&mut proc, "_r_debug").context("hollow.r_debug")?;
-
+    ptrace::cont(child, None)?;
     loop {
+        let status = proc.wait().context("Failed to wait on child")?;
+
+        match status {
+            WaitStatus::Stopped(_, sig) => {
+                let regs = proc.get_regs().ok().context("Failed to get regs")?;
+                if let Err(_) = proc.disassemble_rip()
+                {
+                    println!("{FAIL} Failed to disassemble rip.");
+                }
+                println!("{INFO} RIP is at {:#0x}", regs.rip);
+                if sig == SIGWINCH {
+                    ptrace::cont(child, None)?;
+                    continue;
+                }
+            }
+            WaitStatus::Exited(_, _) => {
+                break;
+            }
+            _ => {}
+        }
+
         if let Ok(key) = term.read_key()
         {
             match key {
@@ -147,23 +167,6 @@ fn main() -> Result<()> {
         } else
         {
             continue;
-        }
-
-        let status = proc.wait().context("Failed to wait on child")?;
-
-        match status {
-            WaitStatus::Stopped(_, _) => {
-                let regs = proc.get_regs().ok().context("Failed to get regs")?;
-                if let Err(_) = proc.disassemble_rip()
-                {
-                    println!("{FAIL} Failed to disassemble rip.");
-                }
-                println!("{INFO} RIP is at {:#0x}", regs.rip);
-            }
-            WaitStatus::Exited(_, _) => {
-                break;
-            }
-            _ => {}
         }
     }
 

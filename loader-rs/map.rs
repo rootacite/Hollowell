@@ -154,21 +154,6 @@ impl MemoryMap {
 
         idx.map(|i| &self.regions[i])
     }
-    #[allow(unused)]
-    pub fn first_rw_segment(&self, module: &str) -> Option<(u64, u64)> {
-        self.regions
-            .iter()
-            .find(|r| r.is_read_write() && r.pathname.as_deref() == Some(module))
-            .map(|r| (r.start_addr, r.end_addr))
-    }
-
-    #[allow(unused)]
-    pub fn first_exec_segment(&self, module: &str) -> Option<(u64, u64)> {
-        self.regions
-            .iter()
-            .find(|r| r.is_executable() && r.pathname.as_deref() == Some(module))
-            .map(|r| (r.start_addr, r.end_addr))
-    }
 
     fn same_file<P: AsRef<Path>, Q: AsRef<Path>>(p1: P, p2: Q) -> std::io::Result<bool> {
         let m1 = fs::metadata(p1)?;

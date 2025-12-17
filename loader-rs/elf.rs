@@ -85,36 +85,7 @@ impl ExecuteLinkFile {
 
         Ok(())
     }
-
-    #[allow(unused)]
-    pub fn get_rela_sym(&self, name: &str) -> Result<Reloc>
-    {
-        let rela_plt = self.borrow_elf().pltrelocs.iter();
-
-        let sym = rela_plt
-            .filter(|rela| {
-                matches!(rela.r_type, R_X86_64_JUMP_SLOT) // R_X86_64_JUMP_SLOT
-            })
-            .filter_map(|rela| {
-                let sym_index = rela.r_sym;
-                let Ok(sym) = self.get_dyn_sym(sym_index) else {
-                    return None;
-                };
-                let Ok(sym_name) = self.get_dyn_str(sym.st_name) else {
-                    return None;
-                };
-
-                if sym_name == name { Some(rela) } else { None }
-            })
-            .collect::<Vec<Reloc>>();
-
-        let first = sym
-            .first()
-            .context(format!("No symbol found with name {}", name))?;
-
-        Ok(first.clone())
-    }
-
+    
     pub fn get_dynsym_table(&self) -> Result<HashMap<String, SymbolTableEntry>>
     {
         let dynstr = &self.borrow_elf().dynstrtab;
@@ -134,27 +105,7 @@ impl ExecuteLinkFile {
 
         Ok(syms)
     }
-
-    pub fn get_dyn_sym(&self, location: usize) -> Result<Sym>
-    {
-        let dyn_sym = self.borrow_elf()
-            .dynsyms
-            .get(location)
-            .context(format!("No symbol found at location {}", location))?;
-
-        Ok(dyn_sym.clone())
-    }
-
-    #[allow(unused)]
-    pub fn prase_dyn_sym(&self, name: &str) -> Result<Sym>
-    {
-        let dyn_sym = self.borrow_elf()
-            .dynsyms.iter()
-            .find(|sym| self.get_dyn_str(sym.st_name).ok().as_deref() == Some(name))
-            .context(format!("No symbol found with name {}", name))?;
-
-        Ok(dyn_sym.clone())
-    }
+    
 
     pub fn get_dyn_str(&self, location: usize) -> Result<String>
     {
@@ -166,9 +117,4 @@ impl ExecuteLinkFile {
         Ok(str.to_owned())
     }
     
-    #[allow(unused)]
-    pub fn get_e_type(&self) -> u16
-    {
-        self.borrow_elf().header.e_type
-    }
 }

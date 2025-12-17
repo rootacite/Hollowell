@@ -31,32 +31,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="bcf41dfd-4782-4ff6-8825-487a1da699db" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/dictionaries/project.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/loader-rs/.cargo/config.toml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/loader-rs/Makefile" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/loader-rs/asm.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/loader-rs/auxiliary.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/loader-rs/chunk.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/loader-rs/elf.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/loader-rs/elfdef.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/loader-rs/hollowgen.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/loader-rs/map.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/loader-rs/parser.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/loader-rs/processes.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/loader-rs/stagger.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/Makefile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/divider/divider.rs" beforeDir="false" afterPath="$PROJECT_DIR$/divider/divider.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/divider/elf.rs" beforeDir="false" afterPath="$PROJECT_DIR$/divider/elf.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hexer/hexer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/hexer/hexer.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/Cargo.lock" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/Cargo.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/build.rs" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/build.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/loader-rs/chain.rs" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/chain.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/loader-rs/elf.rs" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/elf.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/loader-rs/map.rs" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/map.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/loader-rs/processes.rs" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/processes.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -237,6 +216,9 @@
   </component>
   <component name="MakefilesProjectLoadingState">
     <option name="doClean" value="false" />
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
   </component>
   <component name="ProjectApplicationVersion">
     <option name="ide" value="CLion" />
@@ -459,22 +441,11 @@
       <workItem from="1765926414990" duration="189000" />
       <workItem from="1765933943686" duration="6381000" />
       <workItem from="1765966449334" duration="22276000" />
-      <workItem from="1765990864229" duration="10143000" />
+      <workItem from="1765990864229" duration="11544000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/loader-rs/map.rs</url>
-          <line>95</line>
-          <option name="timeStamp" value="83" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
   </component>
 </project>

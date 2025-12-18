@@ -1,12 +1,12 @@
 
 use goblin::elf::reloc::{R_X86_64_64, R_X86_64_GLOB_DAT, R_X86_64_JUMP_SLOT, R_X86_64_COPY, R_X86_64_RELATIVE};
 
-use crate::elfdef::{Rela, SymbolTableEntry};
-use crate::processes::Process;
+use hollowell::elfdef::{Rela, SymbolTableEntry};
+use hollowell::processes::Process;
 use crate::stagger::SymbolResolvable;
 
 use anyhow::{Result};
-use crate::auxiliary::QuickConver;
+use hollowell::auxiliary::QuickConver;
 
 type Relr = u64;
 
@@ -19,8 +19,17 @@ const ALER: &str = "\x1b[31m[!]\x1b[0m";
 #[allow(unused)]
 const INFO: &str = "\x1b[34m[*]\x1b[0m";
 
-impl Process {
-    pub fn do_rela_reloc<T>(&mut self, base: usize, rela: &[Rela], resolver: &T, syms: &[SymbolTableEntry]) -> Result<()>
+pub trait Relocator
+{
+    fn do_rela_reloc<T>(&mut self, base: usize, rela: &[Rela], resolver: &T, syms: &[SymbolTableEntry]) -> Result<()>
+    where
+        T: SymbolResolvable;
+
+    fn do_relr_reloc(&mut self, base: usize, relr: &[Relr]) -> Result<()>;
+}
+
+impl Relocator for Process {
+    fn do_rela_reloc<T>(&mut self, base: usize, rela: &[Rela], resolver: &T, syms: &[SymbolTableEntry]) -> Result<()>
     where
         T: SymbolResolvable
     {
@@ -41,7 +50,7 @@ impl Process {
                                 let w = value + i.r_addend as usize;
                                 self.write_memory_vm(i.r_offset as usize + base, unsafe { plain::as_bytes(&w) })?;
                             }
-                            None => println!("{FAIL} Failed to resolve symbol {}.", sym_name),
+                            None => println!("{FAIL} Failed to resolve symbol {}, Symbol Bind = {}.", sym_name, sym.sym_bind),
                         }
                     }
                     R_X86_64_GLOB_DAT | R_X86_64_JUMP_SLOT => {
@@ -50,7 +59,7 @@ impl Process {
                                 let w = value;
                                 self.write_memory_vm(i.r_offset as usize + base, unsafe { plain::as_bytes(&w) })?;
                             }
-                            None => println!("{FAIL} Failed to resolve symbol {}.", sym_name),
+                            None => println!("{FAIL} Failed to resolve symbol {}, Symbol Bind = {}.", sym_name, sym.sym_bind),
                         }
                     }
                     R_X86_64_COPY => {
@@ -59,7 +68,7 @@ impl Process {
                                 let bytes = self.read_memory_vm(value, sym.sym_size as usize)?;
                                 self.write_memory_vm(i.r_offset as usize + base, &bytes)?;
                             }
-                            None => println!("{FAIL} Failed to resolve symbol {}.", sym_name),
+                            None => println!("{FAIL} Failed to resolve symbol {}, Symbol Bind = {}.", sym_name, sym.sym_bind),
                         }
                     }
                     R_X86_64_RELATIVE => {
@@ -74,7 +83,7 @@ impl Process {
         Ok(())
     }
 
-    pub fn do_relr_reloc(&mut self, base: usize, relr: &[Relr]) -> Result<()>
+    fn do_relr_reloc(&mut self, base: usize, relr: &[Relr]) -> Result<()>
     {
         const BITS: u64 = 63;
         let mut va: u64 = 0;

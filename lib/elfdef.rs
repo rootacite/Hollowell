@@ -9,6 +9,20 @@ use nix::libc::{c_char, dlclose, dlopen, RTLD_LAZY};
 use plain::Plain;
 use crate::auxiliary::{Flatten, RandomLength};
 
+#[derive(Clone, Debug)]
+pub struct SectionHeader {
+    pub sh_name: String,
+    pub sh_type: u32,
+    pub sh_flags: u64,
+    pub sh_addr: u64,
+    pub sh_offset: u64,
+    pub sh_size: u64,
+    pub sh_link: u32,
+    pub sh_info: u32,
+    pub sh_addralign: u64,
+    pub sh_entsize: u64,
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct Header {
@@ -90,14 +104,16 @@ pub fn elf_hash(name: &[u8]) -> u32 {
 }
 
 
-pub struct DynamicHash {
+pub struct DynamicHash 
+{
     nbucket: u32,
     nchain: u32,
     bucket: Vec<u32>,
     chain: Vec<u32>,
 }
 
-impl DynamicHash {
+impl DynamicHash
+{
     pub fn new() -> Self {
         DynamicHash {
             nbucket: 0,

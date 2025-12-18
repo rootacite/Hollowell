@@ -7,13 +7,20 @@ use goblin::elf::program_header::{PF_R, PF_W, PF_X};
 use goblin::elf::reloc::R_X86_64_RELATIVE;
 use goblin::elf::section_header::{SHF_ALLOC, SHN_UNDEF, SHT_DYNAMIC, SHT_DYNSYM, SHT_NOBITS, SHT_PROGBITS, SHT_RELA, SHT_INIT_ARRAY, SHT_FINI_ARRAY};
 use goblin::elf::sym::{STT_NOTYPE, STT_OBJECT, STT_FUNC, STT_TLS, STT_GNU_IFUNC, STB_GLOBAL};
-use crate::elfdef::{get_shared_object_path, Dyn, Rela, SymbolTableEntry, SHT_RELR};
-use crate::{elfdef, hollowgen, parser, Bytes, Relr};
-use crate::asm::assemble;
-use crate::auxiliary::{hash_sha256, ProgramHeaderExt, RandomLength};
-use crate::chunk::{get_chunks_by_filter, SectionChunk};
-use crate::elf::ExecuteLinkFile;
-use crate::processes::Process;
+use hollowell::elfdef::{get_shared_object_path, Dyn, Rela, SymbolTableEntry, SHT_RELR};
+
+use hollowell::chunk::Chunk;
+use hollowell::asm::assemble;
+use hollowell::auxiliary::{hash_sha256, ProgramHeaderExt, RandomLength};
+use hollowell::elf::ExecuteLinkFile;
+use hollowell::processes::Process;
+use hollowell::elfdef;
+use hollowell::chunk::{get_chunks_by_filter, get_phdr};
+
+use crate::hollowgen::HollowGenerator;
+
+type Relr = u64;
+type Bytes = Vec<u8>;
 
 #[allow(unused)]
 const SUCC: &str = "\x1b[32m[+]\x1b[0m";
@@ -31,23 +38,23 @@ pub struct HollowStage
     pub rela: Vec<Rela>,
     pub relr: Vec<Relr>,
     pub syms: Vec<SymbolTableEntry>,
-    pub chunks: Vec<(SectionChunk, Option<Bytes>)>,
+    pub chunks: Vec<(Chunk, Option<Bytes>)>,
 }
 
 impl HollowStage
 {
     pub fn build() -> anyhow::Result<Self>
     {
-        let phdr = parser::get_phdr()?;
+        let phdr = get_phdr()?;
 
-        let mut builder = hollowgen::HollowGenerator::new_x86_64();
+        let mut builder = HollowGenerator::new_x86_64();
         let image_size = phdr.as_slice().get_image_size();
 
         let mut deps: Vec<String> = Vec::new();
         let mut rela: Vec<Rela> = Vec::new();
         let mut relr: Vec<Relr> = Vec::new();
         let mut syms: Vec<SymbolTableEntry> = Vec::new();
-        let mut chunks: Vec<(SectionChunk, Option<Bytes>)> = Vec::new();
+        let mut chunks: Vec<(Chunk, Option<Bytes>)> = Vec::new();
 
         if let Some((_, Some(interp))) = get_chunks_by_filter(|x| { hash_sha256(".interp".as_bytes()) == x.name_hash }).first()
         {
@@ -116,7 +123,7 @@ impl HollowStage
 
         for (v, r) in get_chunks_by_filter(|x| {
             matches!(x.chunk_type, SHT_PROGBITS | SHT_NOBITS | SHT_INIT_ARRAY | SHT_FINI_ARRAY)
-                && (x.flags & SHF_ALLOC != 0)
+                && (x.flags & (SHF_ALLOC as u64) != 0)
         })
         {
             chunks.push((v, r));

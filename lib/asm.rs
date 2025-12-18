@@ -4,7 +4,6 @@
 use std::error::Error;
 use iced_x86::{code_asm::*, Formatter, GasFormatter, Instruction};
 
-#[allow(unused)]
 pub fn assemble<F>(addr: u64, op: F) -> Result<Vec<u8>, Box<dyn Error>>
 where
     F: Fn(&mut CodeAssembler) -> Result<(), Box<dyn Error>>,
@@ -14,7 +13,6 @@ where
     Ok(asm.assemble(addr)?)
 }
 
-#[allow(unused)]
 pub trait InstructionFormat {
     fn fmt_line(&self, formatter: &mut dyn Formatter) -> Result<String, Box<dyn Error>>;
     fn fmt_line_default(&self) -> Result<String, Box<dyn Error>>;

@@ -1,13 +1,14 @@
+
 use std::collections::HashMap;
 use std::ffi::CString;
 use goblin::elf::header::{EM_X86_64, ET_DYN};
 use goblin::elf::program_header::{PF_R, PF_W, PT_DYNAMIC, PT_INTERP, PT_LOAD, PT_PHDR};
-use crate::elfdef;
+use hollowell::elfdef;
 use std::mem::size_of;
 use std::str::FromStr;
 use goblin::elf32::dynamic::DT_NEEDED;
 use goblin::elf::dynamic::{DT_HASH, DT_NULL, DT_RELA, DT_RELAENT, DT_RELASZ, DT_STRSZ, DT_STRTAB, DT_SYMENT, DT_SYMTAB};
-use crate::auxiliary::Flatten;
+use hollowell::auxiliary::Flatten;
 type Bytes = Vec<u8>;
 
 #[allow(unused)]

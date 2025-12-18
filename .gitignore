@@ -23,3 +23,4 @@ bin/
 *.bin
 *.o
 loader/loader
+*.lock

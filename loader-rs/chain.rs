@@ -1,13 +1,5 @@
 
-mod chunk;
-mod elfdef;
-mod parser;
-mod auxiliary;
 mod hollowgen;
-mod processes;
-mod elf;
-mod map;
-mod asm;
 mod relocation;
 mod stagger;
 
@@ -17,7 +9,7 @@ use std::ffi::{CStr, CString};
 use std::os::fd::{AsFd};
 use anyhow::{Result, Context};
 
-use crate::auxiliary::{QuickConver};
+use hollowell::auxiliary::{QuickConver};
 
 use nix::sys::memfd::{memfd_create, MFdFlags};
 
@@ -27,11 +19,12 @@ use nix::sys::ptrace;
 use std::os::unix::ffi::OsStrExt;
 use nix::sys::wait::{WaitStatus};
 
-use crate::processes::Process;
-use crate::parser::get_ehdr;
+use hollowell::processes::Process;
 
 use console::{Term, Key};
 use nix::sys::signal::Signal::SIGWINCH;
+use hollowell::chunk::get_ehdr;
+use crate::relocation::Relocator;
 
 #[allow(unused)]
 const SUCC: &str = "\x1b[32m[+]\x1b[0m";
@@ -41,9 +34,6 @@ const FAIL: &str = "\x1b[31m[-]\x1b[0m";
 const ALER: &str = "\x1b[31m[!]\x1b[0m";
 #[allow(unused)]
 const INFO: &str = "\x1b[34m[*]\x1b[0m";
-
-type Relr = u64;
-type Bytes = Vec<u8>;
 
 fn fexecve_with_current_argv_env<Fd: AsFd>(fd: Fd) -> nix::Result<Infallible>
 {
@@ -93,7 +83,7 @@ fn main() -> Result<()> {
 
     let mut proc = Process::new(child)?;
     println!("{SUCC} Opened process {}", child);
-    ptrace::cont(child, None)?;
+    proc.cont()?;
     proc.wait()?;
 
     let regs = proc.get_regs()?;
@@ -121,7 +111,7 @@ fn main() -> Result<()> {
     proc.do_rela_reloc(base as usize, &hollow.rela, &hollow.deps, &hollow.syms)?;
     proc.do_relr_reloc(base as usize, &hollow.relr)?;
 
-    ptrace::cont(child, None)?;
+    proc.cont()?;
     loop {
         let status = proc.wait().context("Failed to wait on child")?;
 
@@ -134,7 +124,7 @@ fn main() -> Result<()> {
                 }
                 println!("{INFO} RIP is at {:#0x}", regs.rip);
                 if sig == SIGWINCH {
-                    ptrace::cont(child, None)?;
+                    proc.cont()?;
                     continue;
                 }
             }
@@ -150,13 +140,13 @@ fn main() -> Result<()> {
                 Key::Char(c) => {
                     match c {
                         's' => {
-                            ptrace::step(child, None)?;
+                            proc.step()?;
                         }
                         'c' => {
-                            ptrace::cont(child, None)?;
+                            proc.cont()?;
                         }
                         'q' => {
-                            ptrace::kill(child)?;
+                            proc.kill()?;
                             break;
                         }
                         _ => { continue; }

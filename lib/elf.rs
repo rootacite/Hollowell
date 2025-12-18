@@ -3,14 +3,14 @@
 
 use std::collections::HashMap;
 use anyhow::{Context, Result};
-use goblin::elf::{Elf, ProgramHeader, Sym, program_header::PT_LOAD, reloc::R_X86_64_JUMP_SLOT, Reloc};
+use goblin::elf::{Elf, ProgramHeader, program_header::PT_LOAD};
 use memmap2::Mmap;
 use std::fs::File;
 use std::ops::Deref;
 use goblin::elf::dynamic::DT_NEEDED;
 use ouroboros::self_referencing;
 use crate::elfdef;
-use crate::elfdef::{get_shared_object_path, HashConverter, SymbolTableEntry};
+use crate::elfdef::{get_shared_object_path, HashConverter, SectionHeader, SymbolTableEntry};
 
 fn open_mem_map(path: &str) -> Result<Mmap> {
     let file = File::open(path)?;
@@ -19,11 +19,11 @@ fn open_mem_map(path: &str) -> Result<Mmap> {
 
 #[self_referencing]
 pub struct ExecuteLinkFile {
-    data: Vec<u8>,
+    pub data: Vec<u8>,
 
     #[borrows(data)]
     #[covariant]
-    elf: Elf<'this>
+    pub elf: Elf<'this>
 }
 
 impl ExecuteLinkFile {
@@ -116,5 +116,24 @@ impl ExecuteLinkFile {
 
         Ok(str.to_owned())
     }
-    
+
+    pub fn get_sec_table(&self) -> Result<Vec<SectionHeader>>
+    {
+        let r = self.borrow_elf().section_headers.iter().
+            map(|x| SectionHeader {
+                sh_name: self.borrow_elf().shdr_strtab.get_at(x.sh_name).unwrap_or("").to_string(),
+                sh_type: x.sh_type,
+                sh_flags: x.sh_flags,
+                sh_addr: x.sh_addr,
+                sh_offset: x.sh_offset,
+                sh_size: x.sh_size,
+                sh_link: x.sh_link,
+                sh_info: x.sh_info,
+                sh_addralign: x.sh_addralign,
+                sh_entsize: x.sh_entsize,
+            })
+            .collect::<Vec<SectionHeader>>();
+
+        Ok(r)
+    }
 }

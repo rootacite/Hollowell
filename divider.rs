@@ -1,4 +1,3 @@
-mod elf;
 
 use anyhow::*;
 use goblin::elf::section_header::{SHT_NOBITS, SHT_NOTE, SHT_NULL};
@@ -11,27 +10,12 @@ use flate2::write::GzEncoder;
 
 use plain::Plain;
 use sha2::{Digest, Sha256};
-use crate::elf::{ExecuteLinkFile};
+
+use hollowell::{elf, elfdef};
 
 #[repr(transparent)]
 pub struct Header(goblin::elf::Header);
 unsafe impl Plain for Header {}
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug)]
-struct ChunkTableEntry {
-    pub name_hash: [u8; 32],
-    pub vaddr: u64,
-    pub chunk_type: u32,
-    pub size: u64,
-    pub flags: u64,
-    pub align: u64,
-    pub link: u32,
-    pub info: u32,
-    pub entsize: u64,
-}
-
-unsafe impl Plain for ChunkTableEntry {}
 
 pub trait Flatten {
     fn flatten(&self) -> Vec<u8>;
@@ -95,7 +79,7 @@ fn write_compressed(path: &str, content: &[u8], seed: &str) -> Result<()> {
     Ok(())
 }
 
-fn write_base(elf_data: &[u8], elf_parser: &ExecuteLinkFile, seed: &str) -> Result<()>
+fn write_base(elf_data: &[u8], elf_parser: &elf::ExecuteLinkFile, seed: &str) -> Result<()>
 {
     let b_ehdr = &elf_data[0..size_of::<Header>()];
     write_compressed("ehdr.bin", &b_ehdr, seed)?;
@@ -111,12 +95,12 @@ fn write_base(elf_data: &[u8], elf_parser: &ExecuteLinkFile, seed: &str) -> Resu
     Ok(())
 }
 
-fn write_chunk_table(secs: &[elf::SectionHeader], seed: &str) -> Result<()>
+fn write_chunk_table(secs: &[elfdef::SectionHeader], seed: &str) -> Result<()>
 {
-    let mut tab = Vec::<ChunkTableEntry>::new();
+    let mut tab = Vec::<hollowell::chunk::Chunk>::new();
 
     for i in secs {
-        let mut entry = ChunkTableEntry {
+        let mut entry = hollowell::chunk::Chunk {
             name_hash: [0u8; 32],
             vaddr: i.sh_addr,
             chunk_type: i.sh_type,
@@ -138,7 +122,7 @@ fn write_chunk_table(secs: &[elf::SectionHeader], seed: &str) -> Result<()>
     Ok(())
 }
 
-fn write_chunks(elf_data: &[u8], secs: &[elf::SectionHeader], seed: &str) -> Result<()>
+fn write_chunks(elf_data: &[u8], secs: &[elfdef::SectionHeader], seed: &str) -> Result<()>
 {
     for i in secs
     {
@@ -163,7 +147,7 @@ fn main() -> Result<()> {
 
     let elf_path = arg[1].clone();
     let seed = arg[2].clone();
-    let elf_parser = ExecuteLinkFile::prase(&elf_path).expect(&format!("{FAIL} Is this really a elf ??"));
+    let elf_parser = elf::ExecuteLinkFile::prase(&elf_path).expect(&format!("{FAIL} Is this really a elf ??"));
     let elf_data = fs::read(elf_path)?;
 
     write_base(&elf_data, &elf_parser, &seed)?;
@@ -171,7 +155,7 @@ fn main() -> Result<()> {
     let secs = elf_parser.get_sec_table()?;
     let secs = secs
         .into_iter().filter(|x| x.sh_type != SHT_NULL && x.sh_type != SHT_NOTE)
-        .collect::<Vec<elf::SectionHeader>>();
+        .collect::<Vec<elfdef::SectionHeader>>();
 
     write_chunk_table(&secs, &seed)?;
     write_chunks(&elf_data, &secs, &seed)?;

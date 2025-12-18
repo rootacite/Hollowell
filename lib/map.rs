@@ -18,9 +18,7 @@ pub struct MemoryRegion {
     pub end_addr: u64,
     pub perms: String,
     pub offset: Option<u64>,
-    #[allow(unused)]
     pub dev: Option<String>,
-    #[allow(unused)]
     pub inode: Option<u64>,
     pub pathname: Option<String>,
 }
@@ -162,7 +160,6 @@ impl MemoryMap {
         Ok(m1.dev() == m2.dev() && m1.ino() == m2.ino())
     }
 
-    #[allow(unused)]
     pub fn module_base_address(
         &self,
         module: &str, // Full path of module, like '/usr/lib/libc.so.6'
@@ -196,7 +193,6 @@ impl MemoryMap {
         Some(map_item.start_addr - first_load.p_vaddr)
     }
 
-    #[allow(unused)]
     pub fn collect_module(&self, module: &str) -> Vec<MemoryRegion> {
         let r = self
             .regions

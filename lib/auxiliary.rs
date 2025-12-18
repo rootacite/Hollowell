@@ -97,7 +97,6 @@ impl RandomLength for &[u8]
     }
 }
 
-#[allow(unused)]
 pub fn hash_sha256(data: &[u8]) -> Vec<u8>
 {
     let mut hasher = Sha256::new();

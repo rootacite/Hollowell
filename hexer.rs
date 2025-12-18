@@ -21,31 +21,6 @@ fn get_filename_without_extension<P: AsRef<path::Path>>(path: P) -> Result<Strin
         .ok_or_else(|| anyhow!("Unable to extract filename from path: {:?}", path))
 }
 
-fn get_filepath<P: AsRef<path::Path>>(path: P) -> Result<String> {
-    let p = path.as_ref();
-
-    if !p.exists() {
-        return Err(anyhow!(
-            "Path '{}' does not exist or is inaccessible.",
-            p.display()
-        ));
-    }
-
-    match p.parent() {
-        Some(parent_path) => match parent_path.to_str() {
-            Some(s) => Ok(s.to_string()),
-            None => Err(anyhow!(
-                "Parent path '{}' contains invalid non-UTF-8 characters.",
-                parent_path.display()
-            )),
-        },
-        None => Err(anyhow!(
-            "Path '{}' cannot retrieve parent directory.",
-            p.display()
-        )),
-    }
-}
-
 fn compile_target(name: &str) -> Result<(), io::Error> {
     let input_file = format!("{}.c", name);
     let output_file = format!("{}.o", name);

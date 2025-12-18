@@ -9,7 +9,6 @@ use nix::sys::uio::{RemoteIoVec, process_vm_readv, process_vm_writev};
 use nix::unistd::Pid;
 
 use crate::asm::{InstructionFormat, assemble};
-use crate::chunk::SectionChunk;
 use crate::map::MemoryMap;
 use iced_x86::code_asm::{r8, r9, r10, rax, rdi, rdx, rsi};
 use iced_x86::{
@@ -20,6 +19,7 @@ use nix::libc::user_regs_struct;
 use nix::sys::ptrace;
 use nix::sys::wait::{WaitPidFlag, WaitStatus, waitpid};
 use std::io::{IoSlice, IoSliceMut};
+use crate::chunk::Chunk;
 
 #[allow(unused)]
 const SUCC: &str = "\x1b[32m[+]\x1b[0m";
@@ -34,7 +34,6 @@ type Bytes = Vec<u8>;
 
 pub struct Process {
     pid: Pid,
-    #[allow(unused)]
     map: MemoryMap,
     pub history: HashMap<usize, usize>,
     modules_base: HashMap<String, usize>,
@@ -56,6 +55,23 @@ impl Process {
             history: HashMap::new(),
             modules_base: HashMap::new(),
         })
+    }
+
+    pub fn cont(&self) -> Result<()> {
+        let rip = self.get_regs()?.rip;
+        ptrace::cont(self.pid, None)?;
+        println!("{SUCC} Process {} continued from {:#0x}", self.pid, rip);
+        Ok(())
+    }
+
+    pub fn step(&self) -> Result<()> {
+        ptrace::step(self.pid, None)?;
+        Ok(())
+    }
+
+    pub fn kill(&self) -> Result<()> {
+        ptrace::kill(self.pid)?;
+        Ok(())
     }
 
     pub fn wait(&self) -> Result<WaitStatus> {
@@ -114,12 +130,10 @@ impl Process {
         Ok(f)
     }
 
-    #[allow(unused)]
     pub fn get_pid(&self) -> Pid {
         self.pid.clone()
     }
 
-    #[allow(unused)]
     pub fn get_exe(&self) -> Result<String> {
         let r = fs::read_link(format!("/proc/{}/exe", self.pid))?
             .to_string_lossy()
@@ -128,14 +142,12 @@ impl Process {
         Ok(r)
     }
 
-    #[allow(unused)]
     pub fn get_map_str(&self) -> Result<String> {
         let r = fs::read_to_string(format!("/proc/{}/maps", self.pid))?;
 
         Ok(r)
     }
 
-    #[allow(unused)]
     pub fn read_memory_vm(&self, start_addr: usize, size: usize) -> Result<Vec<u8>> {
         let mut buffer = vec![0u8; size];
         let mut local_iov = [IoSliceMut::new(&mut buffer)];
@@ -153,7 +165,6 @@ impl Process {
         }
     }
 
-    #[allow(unused)]
     pub fn write_memory_vm(&self, mut start_addr: usize, vdata: &[u8]) -> Result<usize> {
         let mut data = vdata.to_owned();
 
@@ -183,12 +194,10 @@ impl Process {
         Ok(total_written)
     }
 
-    #[allow(unused)]
     pub fn get_regs(&self) -> Result<user_regs_struct> {
         Ok(ptrace::getregs(self.get_pid())?)
     }
 
-    #[allow(unused)]
     pub fn set_regs(&self, regs: &user_regs_struct) -> Result<()> {
         ptrace::setregs(self.get_pid(), *regs)?;
         Ok(())
@@ -207,7 +216,6 @@ impl Process {
         Ok(())
     }
 
-    #[allow(unused)]
     pub fn module_base_address(&mut self, module: &str) -> Option<u64> {
         if let Some(base) = self.modules_base.get(module) {
             return Some(*base as u64);
@@ -218,7 +226,6 @@ impl Process {
         Some(base)
     }
 
-    #[allow(unused)]
     pub fn execute_once_inplace<F, F2>(
         &mut self,
         payload_builder: F,
@@ -229,7 +236,7 @@ impl Process {
         F2: Fn(&user_regs_struct) -> (),
     {
         // Save context
-        let regs = ptrace::getregs(self.pid)?;
+        let regs = self.get_regs()?;
         let payload = payload_builder(regs.rip).context("payload build failed")?;
 
         let buffer = self.read_memory_vm(regs.rip as usize, payload.len() + 1)?;
@@ -239,22 +246,21 @@ impl Process {
         println!("{SUCC} write instructions to {:#016x}", regs.rip);
 
         // Continue target
-        ptrace::cont(self.pid, None)?;
-        println!("{SUCC} continue from {:#016x}", regs.rip);
-        self.wait();
+        self.cont()?;
+        self.wait()?;
 
-        let r = ptrace::getregs(self.pid)?;
+        let r = self.get_regs()?;
         println!("{INFO} int3 at {:#016x}", r.rip);
 
         post_proc(&r);
 
         self.write_memory_vm(regs.rip as usize, &buffer)?;
-        ptrace::setregs(self.pid, regs)?;
+        self.set_regs(&regs)?;
         Ok(r)
     }
 
-    #[allow(unused)]
-    pub fn alloc_pages(&mut self, count: u64, permissions: u64) -> Result<u64> {
+    pub fn alloc_pages(&mut self, count: u64, permissions: u64) -> Result<u64>
+    {
         // Alloc r-x private memory
         let r = self.execute_once_inplace(
             |addr| {
@@ -281,7 +287,6 @@ impl Process {
         Ok(r.rax as u64)
     }
 
-    #[allow(unused)]
     pub fn disassemble<F, T>(&mut self, addr: u64, size: u64, callback: F) -> Result<T>
     where
         F: Fn(&mut Self, &[Instruction]) -> Result<T>,
@@ -293,8 +298,8 @@ impl Process {
         Ok(result)
     }
 
-    #[allow(unused)]
-    pub fn instruction_relocate(&self, addr: u64, size: u64, new_addr: u64) -> Result<Vec<u8>> {
+    pub fn instruction_relocate(&self, addr: u64, size: u64, new_addr: u64) -> Result<Vec<u8>>
+    {
         let origin = self.read_memory_vm(addr as usize, size as usize)?;
 
         let decoder = Decoder::with_ip(64, &origin, addr, DecoderOptions::NONE);
@@ -319,10 +324,8 @@ impl Process {
 
         Ok(())
     }
-}
 
-impl Process {
-    pub fn map_region(&self, base: usize, chunk: &SectionChunk, data: &Bytes) -> Result<()> {
+    pub fn map_region(&self, base: usize, chunk: &Chunk, data: &Bytes) -> Result<()> {
         self.write_memory_vm(chunk.vaddr as usize + base, data)?;
         println!(
             "{SUCC} Mapped section at base + {:#0x}, name hash = {}, {}, {}, ...",

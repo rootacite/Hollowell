@@ -1,30 +1,34 @@
-
+use std::collections::HashMap;
 use std::ffi::{CStr, CString};
-use std::io::{Read};
+use std::io::Read;
 use std::os::raw::{c_char, c_int, c_void};
 use std::slice;
 use std::str::FromStr;
-use anyhow::*;
+use anyhow::{bail, Context};
 use flate2::read::GzDecoder;
-use goblin::elf64::section_header::SHT_NOBITS;
-use once_cell::sync::Lazy;
+use goblin::elf32::section_header::SHT_NOBITS;
 use plain::Plain;
+use crate::elfdef;
+
+use once_cell::sync::Lazy;
+use crate::auxiliary::ProgramHeaderExt;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
-pub struct SectionChunk {
+pub struct Chunk {
     pub name_hash: [u8; 32],
     pub vaddr: u64,
     pub chunk_type: u32,
     pub size: u64,
-    pub flags: u32,
+    pub flags: u64,
     pub align: u64,
     pub link: u32,
     pub info: u32,
     pub entsize: u64,
 }
 
-unsafe impl Plain for SectionChunk {}
+unsafe impl Plain for Chunk {}
+
 
 type CUlong = u64;
 type Bytes = Vec<u8>;
@@ -32,8 +36,8 @@ static SEED: Lazy<Vec<u8>> = Lazy::new(|| {
     get_seed().unwrap()
 });
 
-static CHUNK_TABLE: Lazy<Vec<SectionChunk>> = Lazy::new(|| {
-    plain::slice_from_bytes::<SectionChunk>(get_chunk_by_name("ct").unwrap().as_slice()).unwrap().to_vec()
+static CHUNK_TABLE: Lazy<Vec<Chunk>> = Lazy::new(|| {
+    plain::slice_from_bytes::<Chunk>(get_chunk_by_name("ct").unwrap().as_slice()).unwrap().to_vec()
 });
 
 #[repr(C)]
@@ -95,17 +99,17 @@ extern "C" fn iter_by_vdata(chunk_info: *const ChunkInfo, user_data: *mut c_void
     1
 }
 
-fn decompress(compressed_data: &[u8]) -> Result<Vec<u8>>
+fn decompress(compressed_data: &[u8]) -> anyhow::Result<Vec<u8>>
 {
     let mut decoder = GzDecoder::new(compressed_data);
 
     let mut decompressed_data = Vec::new();
     decoder.read_to_end(&mut decompressed_data)?;
 
-    Ok(decompressed_data)
+    anyhow::Ok(decompressed_data)
 }
 
-fn get_seed() -> Result<Vec<u8>>
+fn get_seed() -> anyhow::Result<Vec<u8>>
 {
     let name_cstr = CString::from_str("seed")?;
 
@@ -121,14 +125,13 @@ fn get_seed() -> Result<Vec<u8>>
     };
 
     if r == 1 {
-        return Ok(unsafe { slice::from_raw_parts(cb.addr, cb.size as usize) }.to_vec());
+        return anyhow::Ok(unsafe { slice::from_raw_parts(cb.addr, cb.size as usize) }.to_vec());
     }
 
     bail!("Unable to find seed");
 }
 
-#[allow(unused)]
-pub fn get_chunk_by_name(name: &str) -> Result<Vec<u8>>
+pub fn get_chunk_by_name(name: &str) -> anyhow::Result<Vec<u8>>
 {
     let name_cstr = CString::from_str(name)?;
 
@@ -149,14 +152,13 @@ pub fn get_chunk_by_name(name: &str) -> Result<Vec<u8>>
         {
             b[i] ^= SEED[i % 32];
         }
-        return Ok(decompress(&b)?);
+        return anyhow::Ok(decompress(&b)?);
     }
 
     bail!("Unable to find chunk by name");
 }
 
-#[allow(unused)]
-pub fn get_chunk_by_vdata(vdata: u64) -> Result<Vec<u8>>
+pub fn get_chunk_by_vdata(vdata: u64) -> anyhow::Result<Vec<u8>>
 {
     let mut cb = CbIo {
         name: std::ptr::null_mut(),
@@ -175,15 +177,14 @@ pub fn get_chunk_by_vdata(vdata: u64) -> Result<Vec<u8>>
         {
             b[i] ^= SEED[i % 32];
         }
-        return Ok(decompress(&b)?);
+        return anyhow::Ok(decompress(&b)?);
     }
 
     bail!("Unable to find chunk by name");
 }
 
-#[allow(unused)]
-pub fn get_chunks_by_filter<F>(filter: F) -> Vec<(SectionChunk, Option<Bytes>)>
-    where F: Fn(&SectionChunk) -> bool
+pub fn get_chunks_by_filter<F>(filter: F) -> Vec<(Chunk, Option<Bytes>)>
+where F: Fn(&Chunk) -> bool
 {
     CHUNK_TABLE.iter()
         .filter(|x| filter(x))
@@ -198,5 +199,41 @@ pub fn get_chunks_by_filter<F>(filter: F) -> Vec<(SectionChunk, Option<Bytes>)>
             }
             return None;
         })
-        .collect::<Vec<(SectionChunk, Option<Bytes>)>>()
+        .collect::<Vec<(Chunk, Option<Bytes>)>>()
+}
+
+pub fn get_ehdr() -> anyhow::Result<elfdef::Header>
+{
+    let ehdr_bytes = get_chunk_by_name("ehdr")?;
+    let Ok(ehdr) = plain::from_bytes::<elfdef::Header>(&ehdr_bytes) else { bail!("Could not parse ELF header") };
+
+    Ok(ehdr.clone())
+}
+
+pub fn get_phdr() -> anyhow::Result<Vec<elfdef::ProgramHeader>>
+{
+    let phdr_bytes = get_chunk_by_name("phdr")?;
+    let Ok(phdr) = plain::slice_from_bytes::<elfdef::ProgramHeader>(&phdr_bytes) else { bail!("Could not parse Program header") };
+
+    Ok(phdr.to_vec())
+}
+
+pub fn peek_data_at(phdr: &[elfdef::ProgramHeader], address: usize, size: usize) -> anyhow::Result<Vec<u8>>
+{
+    let mut chunk_map = HashMap::<u64, Vec<u8>>::new();
+    let mut result = Vec::<u8>::new();
+
+    for addr in address..address + size {
+        let p = phdr.locate(addr).context("Could not locate address.")?;
+        if !chunk_map.contains_key(&p.p_vaddr)
+        {
+            let chunk = get_chunk_by_vdata(p.p_vaddr)?;
+            chunk_map.insert(p.p_vaddr, chunk);
+        }
+
+        let chunk = chunk_map.get(&p.p_vaddr).context("Could not find chunk.")?;
+        result.push(chunk[addr - p.p_vaddr as usize]);
+    }
+
+    Ok(result)
 }

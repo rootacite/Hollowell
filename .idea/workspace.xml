@@ -31,27 +31,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="bcf41dfd-4782-4ff6-8825-487a1da699db" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/loader-rs/debug.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/loader-rs/tui.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.dumpignore" beforeDir="false" afterPath="$PROJECT_DIR$/.dumpignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/Makefile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/divider.rs" beforeDir="false" afterPath="$PROJECT_DIR$/divider.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/asm.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/asm.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/auxiliary.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/auxiliary.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/chunk.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/chunk.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/elfdef.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/elfdef.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/hollowell.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/hollowell.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/processes.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/processes.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/Makefile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/build.rs" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/build.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/chain.rs" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/chain.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/hollowgen.rs" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/hollowgen.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/relocation.rs" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/relocation.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Hollowell.md" beforeDir="false" afterPath="$PROJECT_DIR$/Hollowell.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/loader-rs/stagger.rs" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/stagger.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/obj/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/obj/Makefile" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -267,36 +248,36 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Cargo.Run chain [Hollowchain].executor": "Debug",
-    "Cargo.Run chain [hollowchain].executor": "Run",
-    "Cargo.Run divider [Hollowell].executor": "Debug",
-    "Cargo.Run divider [hollowell].executor": "Run",
-    "Cargo.Run divider.executor": "Debug",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.RadMigrateCodeStyle": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.readMode.enableVisualFormatting": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "cf.first.check.clang-format": "false",
-    "cidr.known.project.marker": "true",
-    "git-widget-placeholder": "Hollowchain",
-    "last_opened_file_path": "/home/acite/Deeppin/Hollowell/loader-rs",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
-    "org.rust.first.attach.projects": "true",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Cargo.Run chain [Hollowchain].executor&quot;: &quot;Debug&quot;,
+    &quot;Cargo.Run chain [hollowchain].executor&quot;: &quot;Run&quot;,
+    &quot;Cargo.Run divider [Hollowell].executor&quot;: &quot;Debug&quot;,
+    &quot;Cargo.Run divider [hollowell].executor&quot;: &quot;Run&quot;,
+    &quot;Cargo.Run divider.executor&quot;: &quot;Debug&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.RadMigrateCodeStyle&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;Hollowchain&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/acite/Deeppin/Hollowell/loader-rs&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;org.rust.cargo.project.model.PROJECT_DISCOVERY&quot;: &quot;true&quot;,
+    &quot;org.rust.first.attach.projects&quot;: &quot;true&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/loader-rs" />
@@ -309,11 +290,6 @@
     </key>
   </component>
   <component name="RunManager" selected="Cargo.Run chain [hollowchain]">
-    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
-      </method>
-    </configuration>
     <configuration name="Run chain [Hollowchain]" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
       <option name="command" value="run --package Hollowchain --bin chain" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$/loader-rs" />
@@ -526,6 +502,7 @@
       <workItem from="1766091875002" duration="32000" />
       <workItem from="1766120469624" duration="70011000" />
       <workItem from="1766258292782" duration="11429000" />
+      <workItem from="1766270226254" duration="42000" />
     </task>
     <servers />
   </component>

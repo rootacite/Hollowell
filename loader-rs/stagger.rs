@@ -241,7 +241,7 @@ impl HollowStage {
             chunks.push((v, r));
         }
 
-        builder.add_segment(vec![0xcc; 16], image_size, PF_R | PF_W | PF_X, 0);
+        builder.add_segment(vec![0xcc; 16], image_size * 2, PF_R | PF_W | PF_X, 0);
 
         builder.set_entry(0x8, 0);
         builder.add_rela(0, 0, None, R_X86_64_RELATIVE, 0);

@@ -4,3 +4,4 @@ divider/elf.rs
 .cargo
 LICENSE
 README.md
+loader-rs/Cargo.lock

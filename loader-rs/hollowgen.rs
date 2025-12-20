@@ -9,6 +9,8 @@ use std::str::FromStr;
 use goblin::elf32::dynamic::DT_NEEDED;
 use goblin::elf::dynamic::{DT_HASH, DT_NULL, DT_RELA, DT_RELAENT, DT_RELASZ, DT_STRSZ, DT_STRTAB, DT_SYMENT, DT_SYMTAB};
 use hollowell::auxiliary::Flatten;
+use hollowell::elfdef::DynamicHash;
+
 type Bytes = Vec<u8>;
 
 #[allow(unused)]
@@ -186,8 +188,8 @@ impl HollowGenerator {
         let mut tobe_written = HashMap::<u64, Bytes>::new();
         let dyn_addr;
         let mut current = 64u64; // End of ehdr, start of phdr
-        println!("{INFO} Header is at {:#0x}", 0);
-        println!("{INFO} Program Header is at {:#0x}", 64);
+        log::info!("{INFO} Header is at {:#0x}", 0);
+        log::info!("{INFO} Program Header is at {:#0x}", 64);
 
         // 3 => A PT_PHDR, A PT_DYNAMIC, A PT_LOAD (Header cover)
         let mut phnum = 3 + self.segments.len();
@@ -205,7 +207,7 @@ impl HollowGenerator {
         // custom dynamic + DT_NULL + RELA related (3) + HASH + SYMTAM(2) + STRTAB(2)
         let dyn_size = (self.dynamic.len() as u64 + 1 + 4 + 1 + 2 + 2) * size_of::<elfdef::Dyn>() as u64;
 
-        println!("{INFO} Dynamic Segment is at {:#0x}", current);
+        log::info!("{INFO} Dynamic Segment is at {:#0x}", current);
         dyn_addr = current;
         self.phdr[1].p_offset = current;
         self.phdr[1].p_vaddr = current;
@@ -215,7 +217,7 @@ impl HollowGenerator {
         current += dyn_size; // End of dyn, start of interp
 
         if let Some(interp) = self.interp {
-            println!("{INFO} Interp String is at {:#0x}", current);
+            log::info!("{INFO} Interp String is at {:#0x}", current);
             let interp_bytes = interp.as_bytes_with_nul().to_vec();
             self.phdr.push(elfdef::ProgramHeader {
                 p_type: PT_INTERP,
@@ -247,7 +249,7 @@ impl HollowGenerator {
             d_val: current,
         });
 
-        println!("{INFO} Rela table is at {:#0x}", current);
+        log::info!("{INFO} Rela table is at {:#0x}", current);
         let rela_addr = current;
         current += 24 * self.rela.len() as u64; // End of rela, start of dynsym
 
@@ -261,8 +263,8 @@ impl HollowGenerator {
             d_val: current,
         });
 
-        println!("{INFO} Symbol table is at {:#0x}", current);
-        tobe_written.insert(current, self.syms.as_slice().flatten());
+        log::info!("{INFO} Symbol table is at {:#0x}", current);
+        tobe_written.insert(current, self.syms.flatten());
         current += 24 * self.syms.len() as u64;
 
         self.dynamic.push(elfdef::Dyn {
@@ -274,7 +276,7 @@ impl HollowGenerator {
             d_val: self.dynstr.len() as u64,
         });
 
-        println!("{INFO} Dynamic String table is at {:#0x}", current);
+        log::info!("{INFO} Dynamic String table is at {:#0x}", current);
         tobe_written.insert(current, self.dynstr.clone());
         current += self.dynstr.len() as u64; // End of dynstr, start of custom segments
 
@@ -285,8 +287,8 @@ impl HollowGenerator {
             d_val: current,
         });
 
-        println!("{INFO} Hash table is at {:#0x}", current);
-        let hash_table_bytes = self.hash.flatten();
+        log::info!("{INFO} Hash table is at {:#0x}", current);
+        let hash_table_bytes = <DynamicHash as Flatten<DynamicHash>>::flatten(&self.hash);
         tobe_written.insert(current, hash_table_bytes.clone());
         current += hash_table_bytes.len() as u64;
 
@@ -294,7 +296,7 @@ impl HollowGenerator {
             d_tag: DT_NULL,
             d_val: 0,
         });
-        tobe_written.insert(dyn_addr, self.dynamic.as_slice().flatten());
+        tobe_written.insert(dyn_addr, self.dynamic.flatten());
 
         self.phdr[2].p_filesz = current;
         self.phdr[2].p_memsz = current;
@@ -335,8 +337,8 @@ impl HollowGenerator {
         }
         
         tobe_written.insert(0, unsafe { plain::as_bytes(&self.ehdr).to_vec() });
-        tobe_written.insert(64u64, self.phdr.as_slice().flatten());
-        tobe_written.insert(rela_addr, self.rela.iter().map(|x| x.0).collect::<Vec<elfdef::Rela>>().as_slice().flatten());
+        tobe_written.insert(64u64, self.phdr.flatten());
+        tobe_written.insert(rela_addr, self.rela.iter().map(|x| x.0).collect::<Vec<elfdef::Rela>>().flatten());
 
         let mut r = vec![0u8; fp as usize];
 

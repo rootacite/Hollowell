@@ -10,11 +10,13 @@ defconfig: all
 all: $(TARGETS)
 
 obj:
-	cd ../obj
-	../bin/divider $(T) $(KEY)
-	sync
-	../bin/hexer $$(find . -type f -name "*.bin" -exec printf "%s " {} +)
-	rm -f *.bin
+	mkdir -p /tmp/hollow
+	cp ../bin/divider /tmp/hollow
+	cp ../bin/hexer /tmp/hollow
+
+	/tmp/hollow/divider /tmp/hollow  $(T) $(KEY)
+	/tmp/hollow/hexer $$(find /tmp/hollow -type f -name "*.bin" -exec printf "%s " {} +)
+	rm -f /tmp/hollow/*
 
 
 clean:

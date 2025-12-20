@@ -1,17 +1,20 @@
-use std::collections::HashMap;
+
 use std::ffi::{CStr, CString};
-use std::io::Read;
+use std::io::{Read, Write};
 use std::os::raw::{c_char, c_int, c_void};
-use std::slice;
+use std::{fs, slice};
+use std::ops::DerefMut;
 use std::str::FromStr;
-use anyhow::{bail, Context};
+use anyhow::{bail};
+use flate2::Compression;
 use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
 use goblin::elf32::section_header::SHT_NOBITS;
 use plain::Plain;
 use crate::elfdef;
 
 use once_cell::sync::Lazy;
-use crate::auxiliary::ProgramHeaderExt;
+use sha2::{Digest, Sha256};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
@@ -25,16 +28,14 @@ pub struct Chunk {
     pub link: u32,
     pub info: u32,
     pub entsize: u64,
+    pub o_offset: u64
 }
 
 unsafe impl Plain for Chunk {}
 
-
 type CUlong = u64;
 type Bytes = Vec<u8>;
-static SEED: Lazy<Vec<u8>> = Lazy::new(|| {
-    get_seed().unwrap()
-});
+static SEED: Lazy<Vec<u8>> = Lazy::new(|| { get_seed().unwrap() });
 
 static CHUNK_TABLE: Lazy<Vec<Chunk>> = Lazy::new(|| {
     plain::slice_from_bytes::<Chunk>(get_chunk_by_name("ct").unwrap().as_slice()).unwrap().to_vec()
@@ -218,22 +219,35 @@ pub fn get_phdr() -> anyhow::Result<Vec<elfdef::ProgramHeader>>
     Ok(phdr.to_vec())
 }
 
-pub fn peek_data_at(phdr: &[elfdef::ProgramHeader], address: usize, size: usize) -> anyhow::Result<Vec<u8>>
+fn confuse_data(data: &mut [u8], seed: &str) -> anyhow::Result<()>
 {
-    let mut chunk_map = HashMap::<u64, Vec<u8>>::new();
-    let mut result = Vec::<u8>::new();
+    let key = hash_sha256(&seed.as_bytes());
 
-    for addr in address..address + size {
-        let p = phdr.locate(addr).context("Could not locate address.")?;
-        if !chunk_map.contains_key(&p.p_vaddr)
-        {
-            let chunk = get_chunk_by_vdata(p.p_vaddr)?;
-            chunk_map.insert(p.p_vaddr, chunk);
-        }
-
-        let chunk = chunk_map.get(&p.p_vaddr).context("Could not find chunk.")?;
-        result.push(chunk[addr - p.p_vaddr as usize]);
+    for i in 0..data.len() {
+        let b = data[i] ^ key[i % 32];
+        data[i] = b;
     }
 
-    Ok(result)
+    anyhow::Ok(())
+}
+
+pub fn write_compressed(path: &str, content: &[u8], seed: &str) -> anyhow::Result<()>
+{
+    let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+    encoder.write_all(content)?;
+    let mut compressed = encoder.finish()?;
+
+    confuse_data(compressed.deref_mut(), seed)?;
+    fs::write(path, compressed)?;
+    anyhow::Ok(())
+}
+
+
+pub fn hash_sha256(data: &[u8]) -> Vec<u8>
+{
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    let key: sha2::digest::generic_array::GenericArray<u8, sha2::digest::typenum::UInt<sha2::digest::typenum::UInt<sha2::digest::typenum::UInt<sha2::digest::typenum::UInt<sha2::digest::typenum::UInt<sha2::digest::typenum::UInt<sha2::digest::typenum::UTerm, sha2::digest::consts::B1>, sha2::digest::consts::B0>, sha2::digest::consts::B0>, sha2::digest::consts::B0>, sha2::digest::consts::B0>, sha2::digest::consts::B0>> = hasher.finalize();
+
+    key.as_slice().to_owned()
 }

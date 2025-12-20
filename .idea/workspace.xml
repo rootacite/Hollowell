@@ -31,31 +31,27 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="bcf41dfd-4782-4ff6-8825-487a1da699db" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/lib/chunk.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/lib/hollowell.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/loader-rs/debug.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/loader-rs/tui.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.dumpignore" beforeDir="false" afterPath="$PROJECT_DIR$/.dumpignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Cargo.lock" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/divider/README.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/divider/divider.rs" beforeDir="false" afterPath="$PROJECT_DIR$/divider.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/divider/elf.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/hexer/hexer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/hexer.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/Cargo.lock" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/Makefile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/divider.rs" beforeDir="false" afterPath="$PROJECT_DIR$/divider.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/asm.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/asm.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/auxiliary.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/auxiliary.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/chunk.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/chunk.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/elfdef.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/elfdef.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/hollowell.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/hollowell.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/processes.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/processes.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/loader-rs/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/asm.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/asm.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/auxiliary.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/auxiliary.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/loader-rs/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/Makefile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/loader-rs/build.rs" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/build.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/loader-rs/chain.rs" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/chain.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/chunk.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/elf.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/elf.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/elfdef.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/elfdef.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/loader-rs/hollowgen.rs" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/hollowgen.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/map.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/map.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/parser.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/loader-rs/processes.rs" beforeDir="false" afterPath="$PROJECT_DIR$/lib/processes.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/loader-rs/relocation.rs" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/relocation.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/loader-rs/stagger.rs" beforeDir="false" afterPath="$PROJECT_DIR$/loader-rs/stagger.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/obj/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/obj/Makefile" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -75,6 +71,124 @@
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="HighlightingSettingsPerFile">
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
     <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
     <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
     <setting file="mock:///dummy.cpp" root0="SKIP_HIGHLIGHTING" />
@@ -158,6 +272,7 @@
     "Cargo.Run chain [Hollowchain].executor": "Debug",
     "Cargo.Run chain [hollowchain].executor": "Run",
     "Cargo.Run divider [Hollowell].executor": "Debug",
+    "Cargo.Run divider [hollowell].executor": "Run",
     "Cargo.Run divider.executor": "Debug",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.RadMigrateCodeStyle": "true",
@@ -194,6 +309,11 @@
     </key>
   </component>
   <component name="RunManager" selected="Cargo.Run chain [hollowchain]">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="Run chain [Hollowchain]" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
       <option name="command" value="run --package Hollowchain --bin chain" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$/loader-rs" />
@@ -264,6 +384,23 @@
     </configuration>
     <configuration name="Run divider [Hollowell]" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
       <option name="command" value="run --package Hollowell --bin divider -- /bin/gnome-calculator 1145141919" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
+      <option name="emulateTerminal" value="true" />
+      <option name="channel" value="DEFAULT" />
+      <option name="requiredFeatures" value="true" />
+      <option name="allFeatures" value="false" />
+      <option name="withSudo" value="false" />
+      <option name="buildTarget" value="REMOTE" />
+      <option name="backtrace" value="SHORT" />
+      <option name="isRedirectInput" value="false" />
+      <option name="redirectInputPath" value="" />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Run divider [hollowell]" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="command" value="run --package hollowell --bin divider -- /tmp/hollow /bin/ssh 12325gddg" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
       <envs />
       <option name="emulateTerminal" value="true" />
@@ -351,13 +488,16 @@
       <item itemvalue="Cargo.Run divider" />
       <item itemvalue="Cargo.Test Hollowell" />
       <item itemvalue="Cargo.Run chain [hollowchain]" />
+      <item itemvalue="Cargo.Run divider [hollowell]" />
       <item itemvalue="Cargo.Run chain [Hollowchain]" />
       <item itemvalue="Cargo.Run divider [Hollowell]" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Cargo.Run chain [hollowchain]" />
-        <item itemvalue="Cargo.Run chain [Hollowchain]" />
+        <item itemvalue="Cargo.Run divider [hollowell]" />
+        <item itemvalue="Cargo.Run chain [hollowchain]" />
+        <item itemvalue="Cargo.Run divider [hollowell]" />
         <item itemvalue="Cargo.Run divider [Hollowell]" />
       </list>
     </recent_temporary>
@@ -382,7 +522,10 @@
       <workItem from="1765933943686" duration="6381000" />
       <workItem from="1765966449334" duration="22276000" />
       <workItem from="1765990864229" duration="11869000" />
-      <workItem from="1766033295442" duration="5748000" />
+      <workItem from="1766033295442" duration="49805000" />
+      <workItem from="1766091875002" duration="32000" />
+      <workItem from="1766120469624" duration="70011000" />
+      <workItem from="1766258292782" duration="11429000" />
     </task>
     <servers />
   </component>

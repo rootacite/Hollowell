@@ -11,14 +11,13 @@ use nix::unistd::Pid;
 use crate::asm::{InstructionFormat, assemble};
 use crate::map::MemoryMap;
 use iced_x86::code_asm::{r8, r9, r10, rax, rdi, rdx, rsi};
-use iced_x86::{
-    BlockEncoder, BlockEncoderOptions, Decoder, DecoderOptions, Instruction, InstructionBlock,
-};
+use iced_x86::{Decoder, DecoderOptions, Instruction};
 use nix::libc;
 use nix::libc::user_regs_struct;
 use nix::sys::ptrace;
 use nix::sys::wait::{WaitPidFlag, WaitStatus, waitpid};
 use std::io::{IoSlice, IoSliceMut};
+
 use crate::chunk::Chunk;
 
 #[allow(unused)]
@@ -34,13 +33,14 @@ type Bytes = Vec<u8>;
 
 pub struct Process {
     pid: Pid,
-    map: MemoryMap,
+    pub map: MemoryMap,
     pub history: HashMap<usize, usize>,
     modules_base: HashMap<String, usize>,
 }
 
 impl Process {
-    pub fn new(pid: Pid) -> Result<Self> {
+    pub fn new(pid: Pid) -> Result<Self>
+    {
         let maps = fs::read_to_string(format!("/proc/{}/maps", pid))?;
         let map = MemoryMap::new(
             &maps
@@ -57,44 +57,79 @@ impl Process {
         })
     }
 
-    pub fn cont(&self) -> Result<()> {
-        let rip = self.get_regs()?.rip;
+    pub fn getip(&self) -> Result<usize>
+    {
+        Ok(self.get_regs()?.rip as usize)
+    }
+
+    pub fn cont(&self) -> Result<()>
+    {
+        let rip = self.getip()?;
         ptrace::cont(self.pid, None)?;
-        println!("{SUCC} Process {} continued from {:#0x}", self.pid, rip);
+        log::info!("{SUCC} Process {} continued from {}", self.pid, self.map.format_address(rip));
         Ok(())
     }
 
-    pub fn step(&self) -> Result<()> {
+    pub fn step(&self) -> Result<WaitStatus>
+    {
         ptrace::step(self.pid, None)?;
-        Ok(())
+        Ok(Process::wait()?)
     }
 
-    pub fn kill(&self) -> Result<()> {
+    pub fn kill(&self) -> Result<()>
+    {
         ptrace::kill(self.pid)?;
         Ok(())
     }
 
-    pub fn wait(&self) -> Result<WaitStatus> {
-        let f = waitpid(self.pid, Some(WaitPidFlag::WUNTRACED))?;
+    pub fn stepover(&self) -> Result<WaitStatus>
+    {
+        let rip = self.getip()?;
+        let inst = self.disassemble_one_at(rip)?;
+
+        log::info!("{INFO} Prepare to cross {}:{:02} {}",
+                        self.map.format_address(inst.ip() as usize),
+                        inst.len(),
+                        inst.fmt_line_default().unwrap_or_default()
+                    );
+
+        let ob = self.read(rip + inst.len(), 1)?;
+        self.write(rip + inst.len(), &[0xccu8; 1])?;
+
+        log::info!("{SUCC} Breakpoint at {}.", self.map.format_address(rip + inst.len()));
+
+        self.cont()?;
+        let w = Self::wait()?;
+        self.write(rip + inst.len(), &ob)?;
+
+        Ok(w)
+    }
+
+    pub fn wait() -> Result<WaitStatus>
+    {
+        let f = waitpid(None, Some(WaitPidFlag::WUNTRACED|WaitPidFlag::__WALL))?;
 
         match f {
             WaitStatus::Stopped(stopped_pid, signal) => {
-                println!("{ALER} PID {} stopped by signal: {:?}", stopped_pid, signal);
+                log::warn!("{ALER} PID {} stopped by signal: {:?}", stopped_pid, signal);
             }
             WaitStatus::Exited(exited_pid, status) => {
-                println!("{ALER} PID {} exited with status: {}", exited_pid, status);
+                log::warn!("{ALER} PID {} exited with status: {}", exited_pid, status);
             }
             WaitStatus::Signaled(signaled_pid, signal, core_dump) => {
-                println!(
+                log::warn!(
                     "{ALER} PID {} killed by signal: {:?} (core dump: {})",
                     signaled_pid, signal, core_dump
                 );
             }
             WaitStatus::Continued(continued_pid) => {
-                println!("{ALER} PID {} continued", continued_pid);
+                log::warn!("{ALER} PID {} continued", continued_pid);
             }
             WaitStatus::StillAlive => {
-                println!("{ALER} PID {} still alive", self.pid);
+                log::warn!("{ALER} Process still alive");
+            }
+            WaitStatus::PtraceEvent(stopped_pid, _, _) => {
+                log::warn!("{ALER} PID {} stopped by PtraceEvent", stopped_pid);
             }
             _ => {}
         }
@@ -102,27 +137,28 @@ impl Process {
         Ok(f)
     }
 
-    pub fn waitpid(pid: Pid) -> Result<WaitStatus> {
+    pub fn waitpid(pid: Pid) -> Result<WaitStatus>
+    {
         let f = waitpid(pid, Some(WaitPidFlag::WUNTRACED))?;
 
         match f {
             WaitStatus::Stopped(stopped_pid, signal) => {
-                println!("{ALER} PID {} stopped by signal: {:?}", stopped_pid, signal);
+                log::warn!("{ALER} PID {} stopped by signal: {:?}", stopped_pid, signal);
             }
             WaitStatus::Exited(exited_pid, status) => {
-                println!("{ALER} PID {} exited with status: {}", exited_pid, status);
+                log::warn!("{ALER} PID {} exited with status: {}", exited_pid, status);
             }
             WaitStatus::Signaled(signaled_pid, signal, core_dump) => {
-                println!(
+                log::warn!(
                     "{ALER} PID {} killed by signal: {:?} (core dump: {})",
                     signaled_pid, signal, core_dump
                 );
             }
             WaitStatus::Continued(continued_pid) => {
-                println!("{ALER} PID {} continued", continued_pid);
+                log::warn!("{ALER} PID {} continued", continued_pid);
             }
             WaitStatus::StillAlive => {
-                println!("{ALER} PID {} still alive", pid);
+                log::warn!("{ALER} PID {} still alive", pid);
             }
             _ => {}
         }
@@ -134,7 +170,8 @@ impl Process {
         self.pid.clone()
     }
 
-    pub fn get_exe(&self) -> Result<String> {
+    pub fn get_exe(&self) -> Result<String>
+    {
         let r = fs::read_link(format!("/proc/{}/exe", self.pid))?
             .to_string_lossy()
             .into_owned();
@@ -142,13 +179,14 @@ impl Process {
         Ok(r)
     }
 
-    pub fn get_map_str(&self) -> Result<String> {
+    pub fn get_map_str(&self) -> Result<String>
+    {
         let r = fs::read_to_string(format!("/proc/{}/maps", self.pid))?;
-
         Ok(r)
     }
 
-    pub fn read_memory_vm(&self, start_addr: usize, size: usize) -> Result<Vec<u8>> {
+    pub fn read(&self, start_addr: usize, size: usize) -> Result<Vec<u8>>
+    {
         let mut buffer = vec![0u8; size];
         let mut local_iov = [IoSliceMut::new(&mut buffer)];
         let remote_iov = [RemoteIoVec {
@@ -165,7 +203,8 @@ impl Process {
         }
     }
 
-    pub fn write_memory_vm(&self, mut start_addr: usize, vdata: &[u8]) -> Result<usize> {
+    pub fn write(&self, mut start_addr: usize, vdata: &[u8]) -> Result<usize>
+    {
         let mut data = vdata.to_owned();
 
         let mut total_written = 0usize;
@@ -216,7 +255,8 @@ impl Process {
         Ok(())
     }
 
-    pub fn module_base_address(&mut self, module: &str) -> Option<u64> {
+    pub fn module_base_address(&mut self, module: &str) -> Option<u64>
+    {
         if let Some(base) = self.modules_base.get(module) {
             return Some(*base as u64);
         }
@@ -239,22 +279,22 @@ impl Process {
         let regs = self.get_regs()?;
         let payload = payload_builder(regs.rip).context("payload build failed")?;
 
-        let buffer = self.read_memory_vm(regs.rip as usize, payload.len() + 1)?;
+        let buffer = self.read(regs.rip as usize, payload.len() + 1)?;
         let instruction = [&payload as &[u8], &[0xccu8]].concat();
 
-        self.write_memory_vm(regs.rip as usize, &instruction)?;
-        println!("{SUCC} write instructions to {:#016x}", regs.rip);
+        self.write(regs.rip as usize, &instruction)?;
+        log::info!("{SUCC} write instructions to {:#016x}", regs.rip);
 
         // Continue target
         self.cont()?;
-        self.wait()?;
+        Self::wait()?;
 
         let r = self.get_regs()?;
-        println!("{INFO} int3 at {:#016x}", r.rip);
+        log::info!("{INFO} int3 at {:#016x}", r.rip);
 
         post_proc(&r);
 
-        self.write_memory_vm(regs.rip as usize, &buffer)?;
+        self.write(regs.rip as usize, &buffer)?;
         self.set_regs(&regs)?;
         Ok(r)
     }
@@ -287,54 +327,102 @@ impl Process {
         Ok(r.rax as u64)
     }
 
-    pub fn disassemble<F, T>(&mut self, addr: u64, size: u64, callback: F) -> Result<T>
+    pub fn redirect(&self, rip: u64) -> Result<()> {
+        let regs = self.get_regs()?;
+        self.set_regs(&user_regs_struct { rip, ..regs })?;
+
+        log::info!("{SUCC} Redirect the control flow to {}", self.map.format_address(rip as usize));
+
+        Ok(())
+    }
+
+    pub fn redirect_relative(&self, offset: i32) -> Result<usize> {
+        let mut regs = self.get_regs()?;
+
+        if offset >= 0 {
+            regs.rip += offset as u64;
+        } else {
+            let n = (-offset) as u64;
+            regs.rip -= n;
+        }
+        self.set_regs(&user_regs_struct { rip: regs.rip, ..regs })?;
+
+        log::info!("{SUCC} Redirect relatively the control flow to {}", self.map.format_address(regs.rip as usize));
+
+        Ok(regs.rip as usize)
+    }
+
+    pub fn map_region(&self, base: usize, chunk: &Chunk, data: &Bytes) -> Result<()>
+    {
+        self.write(chunk.vaddr as usize + base, data)?;
+        // println!(
+        //     "{SUCC} Mapped section at base + {:#0x}, name hash = {}, {}, {}, ...",
+        //     chunk.vaddr as usize, chunk.name_hash[0], chunk.name_hash[1], chunk.name_hash[2]
+        // );
+        Ok(())
+    }
+
+    pub fn disassemble<F, T>(&mut self, addr: usize, size: usize, callback: F) -> Result<T>
     where
         F: Fn(&mut Self, &[Instruction]) -> Result<T>,
     {
-        let code_bytes = self.read_memory_vm(addr as usize, size as usize)?;
-        let decoder = Decoder::with_ip(64, &code_bytes, addr, DecoderOptions::NONE);
+        let code_bytes = self.read(addr, size)?;
+        let decoder = Decoder::with_ip(64, &code_bytes, addr as u64, DecoderOptions::NONE);
         let instructions: Vec<Instruction> = decoder.into_iter().collect();
         let result = callback(self, &instructions)?;
         Ok(result)
     }
 
-    pub fn instruction_relocate(&self, addr: u64, size: u64, new_addr: u64) -> Result<Vec<u8>>
+    pub fn disassemble_one_at(&self, addr: usize) -> Result<Instruction>
     {
-        let origin = self.read_memory_vm(addr as usize, size as usize)?;
+        let code_bytes = self.read(addr, 15)?;
+        let decoder = Decoder::with_ip(64, &code_bytes, addr as u64, DecoderOptions::NONE);
+        let instructions: Vec<Instruction> = decoder.into_iter().collect();
 
-        let decoder = Decoder::with_ip(64, &origin, addr, DecoderOptions::NONE);
-        let instructions: Vec<_> = decoder.into_iter().collect();
-
-        let block = InstructionBlock::new(&instructions, new_addr);
-        let options = BlockEncoderOptions::RETURN_RELOC_INFOS;
-
-        let result = BlockEncoder::encode(64, block, options)
-            .map_err(|e| format!("BlockEncoder failed: {}", e))
-            .ok()
-            .context("BlockEncoder failed")?;
-
-        Ok(result.code_buffer.clone())
+        Ok(instructions.first().context("Instruction decode failed")?.clone())
     }
 
-    pub fn redirect(&self, rip: u64) -> Result<()> {
-        let regs = self.get_regs()?;
-        self.set_regs(&user_regs_struct { rip, ..regs })?;
+    pub fn disassemble_block(&self, va: usize, data: &[u8], ip: usize) -> Result<()>
+    {
+        let decoder = Decoder::with_ip(64, data, va as u64, DecoderOptions::NONE);
+        let instructions: Vec<Instruction> = decoder.into_iter().collect();
+        let dmap = self.map.clone();
+        let mut cc = 0;
 
-        println!("{SUCC} Redirect the execution stream to {:#0x}", rip);
+        for inst in instructions
+        {
+            let prefix = if inst.ip() == ip as u64 {
+                " \x1b[32mrip\x1b[0m "
+            } else {
+                "     "
+            };
+
+            let arrow = "\x1b[34m->\x1b[0m";
+
+            log::info!(
+                "{}{} <{:#04}> {}:{:02} {}",
+                prefix,
+                arrow,
+                cc,
+                dmap.format_address(inst.ip() as usize),
+                inst.len(),
+                inst.fmt_line_default().unwrap_or_default()
+            );
+            cc += 1;
+        }
 
         Ok(())
     }
 
-    pub fn map_region(&self, base: usize, chunk: &Chunk, data: &Bytes) -> Result<()> {
-        self.write_memory_vm(chunk.vaddr as usize + base, data)?;
-        println!(
-            "{SUCC} Mapped section at base + {:#0x}, name hash = {}, {}, {}, ...",
-            chunk.vaddr as usize, chunk.name_hash[0], chunk.name_hash[1], chunk.name_hash[2]
-        );
-        Ok(())
+    pub fn disassemble_block_as_raw(&self, va: usize, data: &[u8]) -> Result<Vec<Instruction>>
+    {
+        let decoder = Decoder::with_ip(64, data, va as u64, DecoderOptions::NONE);
+        let instructions: Vec<Instruction> = decoder.into_iter().collect();
+        Ok(instructions)
     }
 
-    pub fn disassemble_rip(&mut self) -> Result<()> {
+    pub fn disassemble_rip_log(&mut self) -> Result<()>
+    {
         let regs = self.get_regs()?;
         let current_rip = self.get_regs()?.rip as usize;
 
@@ -358,7 +446,7 @@ impl Process {
         let dmap = self.map.clone();
 
         while lines_printed < 5 {
-            let (next_addr, success) = self.disassemble(curr_addr as u64, 15, |s, insts| {
+            let (next_addr, success) = self.disassemble(curr_addr, 15, |s, insts| {
                 if let Some(inst) = insts.first() {
                     let len = inst.len();
 
@@ -372,7 +460,7 @@ impl Process {
 
                     let arrow = "\x1b[34m->\x1b[0m";
 
-                    println!(
+                    log::info!(
                         "{}{} {}:{:02} {}",
                         prefix,
                         arrow,
@@ -394,7 +482,7 @@ impl Process {
             lines_printed += 1;
         }
 
-        println!("\x1b[90m{}\x1b[0m", "-".repeat(60));
+        log::info!("\x1b[90m{}\x1b[0m", "-".repeat(60));
 
         let gprs = [
             ("rax", regs.rax),
@@ -423,9 +511,56 @@ impl Process {
                 })
                 .collect::<Vec<_>>()
                 .join("  ");
-            println!(" {}", row);
+            log::info!(" {}", row);
         }
 
         Ok(())
+    }
+
+    pub fn disassemble_rip_raw(&mut self) -> Result<Vec<Instruction>>
+    {
+        let mut r = Vec::<Instruction>::new();
+        let current_rip = self.getip()?;
+
+        let mut start_addr = current_rip;
+
+        for _ in 0..2 {
+            if let Some(&prev_addr) = self
+                .history
+                .iter()
+                .find(|(addr, len)| *addr + *len == start_addr)
+                .map(|(k, _)| k)
+            {
+                start_addr = prev_addr;
+            } else {
+                break;
+            }
+        }
+
+        let mut curr_addr = start_addr;
+        let mut lines_printed = 0;
+
+        while lines_printed < 5 {
+            let (next_addr, line) = self.disassemble(curr_addr, 15, |s, insts| {
+                if let Some(inst) = insts.first() {
+                    let len = inst.len();
+
+                    s.history.insert(curr_addr, len);
+
+                    return Ok((curr_addr + len, Some(inst.clone())));
+                }
+                Ok((0, None))
+            })?;
+
+            if let Some(line) = line {
+                r.push(line);
+            } else {
+                break;
+            }
+
+            curr_addr = next_addr;
+            lines_printed += 1;
+        }
+        Ok(r)
     }
 }

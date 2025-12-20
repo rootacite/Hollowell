@@ -2,7 +2,7 @@
 use anyhow::{bail};
 use goblin::elf::program_header::PT_LOAD;
 use plain::{Plain};
-use sha2::{Digest, Sha256};
+
 use crate::elfdef::ProgramHeader;
 
 #[allow(unused)]
@@ -14,13 +14,30 @@ const ALER: &str = "\x1b[31m[!]\x1b[0m";
 #[allow(unused)]
 const INFO: &str = "\x1b[34m[*]\x1b[0m";
 
+#[derive(Debug, Clone)]
+pub struct ChunkMeta
+{
+    pub address: u64,
+    pub in_window: bool,
+    pub fault_counter: u32,
+    pub data: Vec<u8>
+}
+
+#[derive(Debug, Clone)]
+pub struct ChunkMetaInMemory
+{
+    pub origin_address: u64,
+    pub data: Vec<u8>,
+    pub relocated: u64
+}
+
 pub trait ProgramHeaderExt {
     fn get_image_size(&self) -> usize;
     #[allow(unused)]
     fn locate(&self, address: usize) -> Option<&ProgramHeader>;
 }
 
-pub trait Flatten {
+pub trait Flatten<T> {
     fn flatten(&self) -> Vec<u8>;
 }
 
@@ -59,13 +76,15 @@ impl ProgramHeaderExt for &[ProgramHeader]
     }
 }
 
-impl<T> Flatten for &[T]
-    where T: Plain
+impl<T, B> Flatten<T> for B
+    where
+        T: Plain,
+        B: AsRef<[T]>
 {
     fn flatten(&self) -> Vec<u8>
     {
         let mut flattened: Vec<u8> = Vec::new();
-        for i in self.iter()
+        for i in self.as_ref().iter()
         {
             let mut b = unsafe { plain::as_bytes::<T>(&i) }.to_vec();
             flattened.append(&mut b);
@@ -97,15 +116,6 @@ impl RandomLength for &[u8]
     }
 }
 
-pub fn hash_sha256(data: &[u8]) -> Vec<u8>
-{
-    let mut hasher = Sha256::new();
-    hasher.update(data);
-    let key: sha2::digest::generic_array::GenericArray<u8, sha2::digest::typenum::UInt<sha2::digest::typenum::UInt<sha2::digest::typenum::UInt<sha2::digest::typenum::UInt<sha2::digest::typenum::UInt<sha2::digest::typenum::UInt<sha2::digest::typenum::UTerm, sha2::digest::consts::B1>, sha2::digest::consts::B0>, sha2::digest::consts::B0>, sha2::digest::consts::B0>, sha2::digest::consts::B0>, sha2::digest::consts::B0>> = hasher.finalize();
-
-    key.as_slice().to_owned()
-}
-
 pub trait QuickConver {
     fn to<T>(&self) -> anyhow::Result<T>
     where
@@ -129,5 +139,71 @@ where
                 bail!("Failed to convert");
             }
         }
+    }
+}
+
+pub trait BlockLocator
+{
+    fn find_block(&mut self, x: u64) -> Option<&mut ChunkMeta>;
+}
+
+pub trait BlockLocatorInMemory {
+    fn find_block_in_memory(&mut self, x: u64) -> Option<&mut ChunkMetaInMemory>;
+    fn find_block_out_memory(&mut self, x: u64) -> Option<&mut ChunkMetaInMemory>;
+}
+
+impl<B> BlockLocator for B
+where
+    B: AsMut<[ChunkMeta]>
+{
+    fn find_block(&mut self, x: u64) -> Option<&mut ChunkMeta>
+    {
+        let mut l = 0usize;
+        let mut r = self.as_mut().len();
+
+        while l < r {
+            let m = (l + r) / 2;
+            if self.as_mut()[m].address <= x {
+                l = m + 1;
+            } else {
+                r = m;
+            }
+        }
+
+        if l == 0 {
+            return None;
+        }
+
+        let h = &self.as_mut()[l - 1];
+        if x < h.address + h.data.len() as u64 {
+            Some(&mut self.as_mut()[l - 1])
+        } else {
+            None
+        }
+    }
+}
+
+impl<B> BlockLocatorInMemory for B
+where
+    B: AsMut<[ChunkMetaInMemory]>
+{
+    fn find_block_in_memory(&mut self, x: u64) -> Option<&mut ChunkMetaInMemory> {
+        for i in self.as_mut() {
+            if x >= i.relocated && x < i.relocated + i.data.len() as u64 {
+                return Some(i);
+            }
+        }
+
+        None
+    }
+
+    fn find_block_out_memory(&mut self, x: u64) -> Option<&mut ChunkMetaInMemory> {
+        for i in self.as_mut() {
+            if x == i.origin_address {
+                return Some(i);
+            }
+        }
+
+        None
     }
 }

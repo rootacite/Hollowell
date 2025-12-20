@@ -18,7 +18,7 @@ dirs:
 	mkdir -p obj
 
 bin: dirs
-	$(CARGO) build -j 28
+	$(CARGO) build -j 28 -q
 	cp /tmp/rust-target-hwel/x86_64-unknown-linux-gnu/debug/hexer ./bin/
 	cp /tmp/rust-target-hwel/x86_64-unknown-linux-gnu/debug/divider ./bin/
 

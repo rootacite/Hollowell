@@ -104,7 +104,7 @@ pub fn elf_hash(name: &[u8]) -> u32 {
 }
 
 
-pub struct DynamicHash 
+pub struct DynamicHash
 {
     nbucket: u32,
     nchain: u32,
@@ -200,14 +200,14 @@ impl DynamicHash
     }
 }
 
-impl Flatten for DynamicHash {
+impl<T> Flatten<T> for DynamicHash {
     fn flatten(&self) -> Vec<u8> {
         let mut flat: Vec<u8> = Vec::new();
 
         flat.append(&mut unsafe { plain::as_bytes(&self.nbucket) }.to_vec());
         flat.append(&mut unsafe { plain::as_bytes(&self.nchain) }.to_vec());
-        flat.append(&mut self.bucket.as_slice().flatten());
-        flat.append(&mut self.chain.as_slice().flatten());
+        flat.append(&mut self.bucket.flatten());
+        flat.append(&mut self.chain.flatten());
 
         flat
     }

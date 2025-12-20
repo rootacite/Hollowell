@@ -2,29 +2,19 @@
 mod hollowgen;
 mod relocation;
 mod stagger;
+mod tui;
+mod debug;
 
 use std;
 use std::convert::Infallible;
+use std::env;
 use std::ffi::{CStr, CString};
+
 use std::os::fd::{AsFd};
-use anyhow::{Result, Context};
-
-use hollowell::auxiliary::{QuickConver};
-
-use nix::sys::memfd::{memfd_create, MFdFlags};
-
-use nix::unistd::{write, lseek, Whence, ForkResult, Pid};
-use nix::sys::ptrace;
-
+use anyhow::{Result};
 use std::os::unix::ffi::OsStrExt;
-use nix::sys::wait::{WaitStatus};
-
-use hollowell::processes::Process;
-
-use console::{Term, Key};
-use nix::sys::signal::Signal::SIGWINCH;
-use hollowell::chunk::get_ehdr;
-use crate::relocation::Relocator;
+use std::io::Write;
+use crate::tui::UI;
 
 #[allow(unused)]
 const SUCC: &str = "\x1b[32m[+]\x1b[0m";
@@ -38,13 +28,13 @@ const INFO: &str = "\x1b[34m[*]\x1b[0m";
 fn fexecve_with_current_argv_env<Fd: AsFd>(fd: Fd) -> nix::Result<Infallible>
 {
 
-    let argv_c: Result<Vec<CString>, std::ffi::NulError> = std::env::args_os()
+    let argv_c: Result<Vec<CString>, std::ffi::NulError> = env::args_os()
         .map(|os| CString::new(os.as_os_str().as_bytes()))
         .collect();
     let argv_c = argv_c.map_err(|_| nix::Error::from(nix::errno::Errno::EINVAL))?;
     let argv_refs: Vec<&CStr> = argv_c.iter().map(|s| s.as_c_str()).collect();
 
-    let envp_c: Result<Vec<CString>, std::ffi::NulError> = std::env::vars_os()
+    let envp_c: Result<Vec<CString>, std::ffi::NulError> = env::vars_os()
         .map(|(k, v)| {
             // create NAME=VALUE as bytes
             let mut kv = Vec::with_capacity(k.as_os_str().len() + 1 + v.as_os_str().len());
@@ -61,104 +51,50 @@ fn fexecve_with_current_argv_env<Fd: AsFd>(fd: Fd) -> nix::Result<Infallible>
 }
 
 fn main() -> Result<()> {
-    let term = Term::stdout();
-    let ehdr = get_ehdr()?;
-    let hollow = stagger::HollowStage::build()?;
+    let mut builder = env_logger::Builder::new();
+    builder.format(|buf, record| {
+        writeln!(buf, "<{}> {}",
+                 record.target(),
+                 record.args()
+        )
+    });
+    builder.filter_level(log::LevelFilter::Debug);
 
-    let hollow_mem = memfd_create("hollow", MFdFlags::empty())?;
-    write(&hollow_mem, &hollow.data)?;
-    lseek(&hollow_mem, 0, Whence::SeekSet)?;
+    let logger = builder.build();
+    log::set_boxed_logger(Box::new(logger))?;
 
-    let child = match unsafe { nix::unistd::fork() }? {
-        ForkResult::Parent { child } => child,
-        ForkResult::Child => {
-            ptrace::traceme()?;
-            fexecve_with_current_argv_env(hollow_mem)?;
+    log::set_max_level(log::LevelFilter::Debug);
 
-            Pid::from_raw(0)
-        }
+    let mut hollow = stagger::HollowStage::build()?;
+
+    hollow.do_relocate = !match env::var("HC_DONT_RELOCATE") {
+        Ok(_) => true,
+        Err(_) => false,
     };
 
-    Process::waitpid(child)?;
+    hollow.debug.debug = match env::var("HC_DEBUG") {
+        Ok(_) => true,
+        Err(_) => false,
+    };
 
-    let mut proc = Process::new(child)?;
-    println!("{SUCC} Opened process {}", child);
-    proc.cont()?;
-    proc.wait()?;
+    hollow.do_log = match env::var("HC_LOG") {
+        Ok(_) => true,
+        Err(_) => false,
+    };
 
-    let regs = proc.get_regs()?;
+    hollow.tui = match env::var("HC_TUI") {
+        Ok(_) => {
+            hollow.debug.debug = true;
+            hollow.debug.tui = true;
+            log::set_max_level(log::LevelFilter::Off);
+            Some(UI::new()?)
+        },
+        Err(_) => None,
+    };
 
-    let sbase = regs.rip - 1 - 8;
-    let base = proc.read_memory_vm((regs.rip - 1 - 8) as usize, 8)?.to::<u64>()?;
-    println!("{SUCC} Hollow process load main module at {:#0x}, Base is {:#0x}", base, base);
-
-    proc.redirect(base + ehdr.e_entry)?;
-
-    for i in hollow.chunks.iter()
-    {
-        if let (s, Some(b)) = i && s.vaddr >= (sbase - base)
-        {
-            // At present, during the testing phase, the entire section is temporarily loaded
-            // Subsequently, the loading layout will be shuffled based on instruction analysis
-            // And the instructions and the data referenced by the instructions will be dynamically written
-            // Instructions unrelated to the current location will be written to a random location for execution
-            // Instructions or data unrelated to the current state will be filled with int3 (0xcc) and 0
-            proc.map_region(base as usize, &s, b)?;
-        }
-    }
-
-    proc.flush_map()?;
-    proc.do_rela_reloc(base as usize, &hollow.rela, &hollow.deps, &hollow.syms)?;
-    proc.do_relr_reloc(base as usize, &hollow.relr)?;
-
-    proc.cont()?;
-    loop {
-        let status = proc.wait().context("Failed to wait on child")?;
-
-        match status {
-            WaitStatus::Stopped(_, sig) => {
-                let regs = proc.get_regs().ok().context("Failed to get regs")?;
-                if let Err(_) = proc.disassemble_rip()
-                {
-                    println!("{FAIL} Failed to disassemble rip.");
-                }
-                println!("{INFO} RIP is at {:#0x}", regs.rip);
-                if sig == SIGWINCH {
-                    proc.cont()?;
-                    continue;
-                }
-            }
-            WaitStatus::Exited(_, _) => {
-                break;
-            }
-            _ => {}
-        }
-
-        if let Ok(key) = term.read_key()
-        {
-            match key {
-                Key::Char(c) => {
-                    match c {
-                        's' => {
-                            proc.step()?;
-                        }
-                        'c' => {
-                            proc.cont()?;
-                        }
-                        'q' => {
-                            proc.kill()?;
-                            break;
-                        }
-                        _ => { continue; }
-                    }
-                },
-                _ => { continue; }
-            }
-        } else
-        {
-            continue;
-        }
-    }
+    hollow.startup()?;
+    hollow.prepare()?;
+    hollow.staging()?;
 
     Ok(())
 }

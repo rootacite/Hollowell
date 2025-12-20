@@ -7,3 +7,7 @@ pub mod processes;
 pub mod auxiliary;
 pub mod chunk;
 
+pub fn init()
+{
+    env_logger::init();
+}

@@ -8,7 +8,7 @@ defconfig: all
 all: $(TARGETS)
 
 chain:
-	$(CARGO) build -j 28
+	$(CARGO) build -j 28 -q
 	cp /tmp/rust-target-hwel-chain/x86_64-unknown-linux-gnu/debug/chain ../bin/
 
 clean:

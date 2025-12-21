@@ -144,7 +144,7 @@ where
 
 pub trait BlockLocator
 {
-    fn find_block(&mut self, x: u64) -> Option<&mut ChunkMeta>;
+    fn find_block_index(&self, x: u64) -> Option<usize>;
 }
 
 pub trait BlockLocatorInMemory {
@@ -154,16 +154,16 @@ pub trait BlockLocatorInMemory {
 
 impl<B> BlockLocator for B
 where
-    B: AsMut<[ChunkMeta]>
+    B: AsRef<[ChunkMeta]>
 {
-    fn find_block(&mut self, x: u64) -> Option<&mut ChunkMeta>
+    fn find_block_index(&self, x: u64) -> Option<usize>
     {
         let mut l = 0usize;
-        let mut r = self.as_mut().len();
+        let mut r = self.as_ref().len();
 
         while l < r {
             let m = (l + r) / 2;
-            if self.as_mut()[m].address <= x {
+            if self.as_ref()[m].address <= x {
                 l = m + 1;
             } else {
                 r = m;
@@ -174,9 +174,9 @@ where
             return None;
         }
 
-        let h = &self.as_mut()[l - 1];
+        let h = &self.as_ref()[l - 1];
         if x < h.address + h.data.len() as u64 {
-            Some(&mut self.as_mut()[l - 1])
+            Some(l - 1)
         } else {
             None
         }

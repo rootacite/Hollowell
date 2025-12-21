@@ -82,12 +82,13 @@ impl Assembly
 
     pub fn next_branch(&mut self) -> Result<usize>
     {
+        let o = self.offset;
         loop {
             let instruction = self.decode_one()?;
             self.offset += instruction.len();
 
 
-            if instruction.code() == Code::Endbr64 {
+            if instruction.code() == Code::Endbr64 && self.offset - 4 != o {
                 break Ok(self.offset - instruction.len());
             }
 

@@ -63,6 +63,7 @@ fn split_instructions(elf_data: &[u8], sec: &elfdef::SectionHeader, tab: &mut Ve
     let bytes = &elf_data[sec.sh_offset as usize..sec.sh_offset as usize + sec.sh_size as usize];
     let mut ip = 0u64;
     let mut decoder = Assembly::new(&bytes);
+    let mut cc = 0u32;
 
     loop {
         let b = decoder.next_branch()?;
@@ -79,6 +80,8 @@ fn split_instructions(elf_data: &[u8], sec: &elfdef::SectionHeader, tab: &mut Ve
             entsize: sec.sh_entsize,
             o_offset: sec.sh_offset + ip,
         };
+        println!("{INFO} Chunk {} from {:#0x} sized {:#0x}", cc, sec.sh_addr + ip,b as u64 - ip);
+        cc += 1;
 
         tab.push(entry);
         ip = b as u64;
@@ -109,6 +112,7 @@ fn generate_chunks(elf_data: &[u8], secs: &[elfdef::SectionHeader]) -> Result<Ve
                 o_offset: i.sh_offset,
             };
             entry.name_hash.copy_from_slice(hash_sha256(i.sh_name.as_bytes()).as_slice());
+            println!("{INFO} Included section {}.", i.sh_name);
 
             tab.push(entry);
         }

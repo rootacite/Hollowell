@@ -71,6 +71,13 @@ impl Relocator for Process {
                             None => log::error!("{FAIL} Failed to resolve symbol {}, Symbol Bind = {}.", sym_name, sym.sym_bind),
                         }
                     }
+                    _ => {}
+                }
+            }
+            else {
+                let rel_type = (i.r_info & 0xffffffff) as u32;
+
+                match rel_type {
                     R_X86_64_RELATIVE => {
                         let value = base + i.r_addend as usize;
                         self.write(i.r_offset as usize + base, unsafe { plain::as_bytes(&value) })?;

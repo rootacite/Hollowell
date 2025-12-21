@@ -299,7 +299,7 @@ impl Process {
         Ok(r)
     }
 
-    pub fn alloc_pages(&mut self, count: u64, permissions: u64) -> Result<u64>
+    pub fn alloc_pages(&mut self, required_addr: u64, count: u64, permissions: u64) -> Result<u64>
     {
         // Alloc r-x private memory
         let r = self.execute_once_inplace(
@@ -307,7 +307,7 @@ impl Process {
                 let r = assemble(addr, |asm| {
                     asm.mov(rax, 9u64)?; // Syscall 9 (mmap)
 
-                    asm.mov(rdi, 0u64)?; // Addr
+                    asm.mov(rdi, required_addr)?; // Addr
                     asm.mov(rsi, 0x1000u64 * count)?; // Length, we alloc a page (4K)
                     asm.mov(rdx, permissions)?;
                     asm.mov(r10, (libc::MAP_PRIVATE | libc::MAP_ANONYMOUS) as u64)?; // Private and anonymous

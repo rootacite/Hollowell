@@ -4,7 +4,7 @@ use hollowell::processes::Process;
 
 use anyhow::{Result};
 
-pub struct HollowStageDebug
+pub struct HollowDebug
 {
     // Debug fields
     pub focused_origin: Vec<Instruction>,
@@ -13,6 +13,7 @@ pub struct HollowStageDebug
     pub ins_number: usize,
 
     pub debug: bool,
+    pub do_log: bool,
     pub tui: bool,
     pub major: Option<Process>,
 
@@ -21,7 +22,7 @@ pub struct HollowStageDebug
     pub focused_near: Vec<Instruction>,
 }
 
-impl HollowStageDebug {
+impl HollowDebug {
     pub fn debug_flush_block(&mut self, o: &ChunkMeta, r: &ChunkMetaInMemory, ip: (usize, usize), n: usize) -> Result<()>
     {
         if !self.debug {

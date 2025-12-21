@@ -3,7 +3,6 @@ mod hollowgen;
 mod relocation;
 mod stagger;
 mod tui;
-mod debug;
 
 use std;
 use std::convert::Infallible;
@@ -65,9 +64,9 @@ fn main() -> Result<()> {
 
     log::set_max_level(log::LevelFilter::Debug);
 
-    let mut hollow = stagger::HollowStage::build()?;
+    let mut hollow = stagger::HollowStage::arrange()?;
 
-    hollow.do_relocate = !match env::var("HC_DONT_RELOCATE") {
+    hollow.kinesis.allow_relocate = !match env::var("HC_DONT_RELOCATE") {
         Ok(_) => true,
         Err(_) => false,
     };
@@ -77,7 +76,7 @@ fn main() -> Result<()> {
         Err(_) => false,
     };
 
-    hollow.do_log = match env::var("HC_LOG") {
+    hollow.debug.do_log = match env::var("HC_LOG") {
         Ok(_) => true,
         Err(_) => false,
     };
@@ -92,9 +91,6 @@ fn main() -> Result<()> {
         Err(_) => None,
     };
 
-    hollow.startup()?;
-    hollow.prepare()?;
     hollow.staging()?;
-
     Ok(())
 }

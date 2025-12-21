@@ -1,6 +1,6 @@
 use std::cmp::min;
 
-use crate::debug::HollowStageDebug;
+use crate::stagger::debug::HollowDebug;
 
 use anyhow::Result;
 use crossterm::{
@@ -39,7 +39,7 @@ impl UI {
         Ok(UI { terminal, table_state })
     }
 
-    pub fn flush(&mut self, hd: &mut HollowStageDebug) -> Result<()> {
+    pub fn flush(&mut self, hd: &mut HollowDebug) -> Result<()> {
         if hd.clear {
             self.terminal.clear()?;
             hd.clear = false;
